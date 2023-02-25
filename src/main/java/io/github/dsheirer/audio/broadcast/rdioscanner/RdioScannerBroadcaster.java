@@ -31,6 +31,7 @@ import io.github.dsheirer.gui.playlist.radioreference.RadioReferenceDecoder;
 import io.github.dsheirer.identifier.Form;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.IdentifierClass;
+import io.github.dsheirer.identifier.MutableIdentifierCollection;
 import io.github.dsheirer.identifier.Role;
 import io.github.dsheirer.identifier.configuration.ConfigurationLongIdentifier;
 import io.github.dsheirer.identifier.patch.PatchGroup;
@@ -119,8 +120,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
         else
         {
             mLog.error("Error connecting to Rdio Scanner server on startup [" + response + "]");
-            setBroadcastState(BroadcastState.CONNECTED);
-            //setBroadcastState(BroadcastState.ERROR);
+            setBroadcastState(BroadcastState.ERROR);
         }
 
         if(mAudioRecordingProcessorFuture == null)
@@ -175,7 +175,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
             String response = testConnection(getBroadcastConfiguration());
             mLastConnectionAttempt = System.currentTimeMillis();
 
-            if(response != null && response.toLowerCase().startsWith("ok"))
+            if(response != null && response.toLowerCase().startsWith("incomplete call data: no talkgroup"))
             {
                 setBroadcastState(BroadcastState.CONNECTED);
             }
@@ -236,48 +236,34 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                 String radioId = getFrom(audioRecording);
                 Long frequency = getFrequency(audioRecording);
 
-                mLog.error("Starting call upload. TG: " + talkgroup + " Frequency: " + frequency + " Source: " + radioId);
-
-                byte[] audioBytes = null;
                 try
                 {
-                    audioBytes = Files.readAllBytes(audioRecording.getPath());
-                }
-                catch(IOException e)
-                {
-                    mLog.error("Rdio Scanner API - audio recording file not found - ignoring upload");
-                }
-
-                RdioScannerBuilder bodyBuilder = new RdioScannerBuilder();
-                bodyBuilder.addPart(FormField.KEY, getBroadcastConfiguration().getApiKey())
-                    .addPart(FormField.SYSTEM, getBroadcastConfiguration().getSystemID())
-                    .addFile(audioBytes)
-                    .addPart(FormField.AUDIO_NAME, "@" + audioRecording.getPath())
-                    .addPart(FormField.AUDIO_TYPE, "audio/mpeg")
-                    //.addPart(FormField.CALL_DURATION, durationSeconds)
-                    .addPart(FormField.DATE_TIME, timestampSeconds)
-                    .addPart(FormField.TALKGROUP_ID, talkgroup)
-                    .addPart(FormField.SOURCE, radioId)
-                    .addPart(FormField.FREQUENCY, frequency);
-                    
-                    //.addPart(FormField.ENCODING, ENCODING_TYPE_MP3);
-
-                try
-                {
-                    HttpRequest.BodyPublisher filePublisher = null;
+                    byte[] audioBytes = null;
 
                     try
                     {
-                        filePublisher = HttpRequest.BodyPublishers.ofFile(audioRecording.getPath());
+                        audioBytes = Files.readAllBytes(audioRecording.getPath());
                     }
-                    catch(FileNotFoundException fnfe)
+                    catch(IOException e)
                     {
                         mLog.error("Rdio Scanner API - audio recording file not found - ignoring upload");
                     }
 
-                    if(filePublisher != null)
+                    if(audioBytes != null)
                     {
 
+                        RdioScannerBuilder bodyBuilder = new RdioScannerBuilder();
+                            bodyBuilder.addPart(FormField.KEY, getBroadcastConfiguration().getApiKey())
+                            .addPart(FormField.SYSTEM, getBroadcastConfiguration().getSystemID())
+                            .addFile(audioBytes)
+                            .addPart(FormField.AUDIO_NAME, "@" + audioRecording.getPath())
+                            .addPart(FormField.AUDIO_TYPE, "audio/mpeg")
+                            //.addPart(FormField.CALL_DURATION, durationSeconds)
+                            .addPart(FormField.DATE_TIME, timestampSeconds)
+                            .addPart(FormField.TALKGROUP_ID, talkgroup)
+                            .addPart(FormField.SOURCE, radioId)
+                            .addPart(FormField.FREQUENCY, frequency);
+                            //.addPart(FormField.ENCODING, ENCODING_TYPE_MP3);
 
                         HttpRequest fileRequest = HttpRequest.newBuilder()
                             .uri(URI.create(getBroadcastConfiguration().getHost()))
@@ -287,7 +273,6 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                             .POST(bodyBuilder.build())
                             .build();
 
-
                         mHttpClient.sendAsync(fileRequest, HttpResponse.BodyHandlers.ofString())
                             .whenComplete((fileResponse, throwable1) -> {
                                 if(throwable1 != null || fileResponse.statusCode() != 200)
@@ -296,6 +281,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                     {
                                         //We get socket reset exceptions occasionally when the remote server doesn't
                                         //fully read our request and immediately responds.
+                                        setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
                                         mLog.error("Rdio Scanner API file upload fail [" +
                                             fileResponse.statusCode() + "] response [" +
                                             fileResponse.body() + "]");
@@ -314,12 +300,31 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                 }
                                 else
                                 {
-                                    incrementStreamedAudioCount();
-                                    broadcast(new BroadcastEvent(RdioScannerBroadcaster.this,
-                                        BroadcastEvent.Event.BROADCASTER_STREAMED_COUNT_CHANGE));
-                                }
+                                    String fileResponseString = fileResponse.body();
 
-                                audioRecording.removePendingReplay();
+                                    if(fileResponseString.contains("Call imported successfully."))
+                                    {
+                                        incrementStreamedAudioCount();
+                                        broadcast(new BroadcastEvent(RdioScannerBroadcaster.this,
+                                            BroadcastEvent.Event.BROADCASTER_STREAMED_COUNT_CHANGE)); 
+                                        audioRecording.removePendingReplay(); 
+                                    }
+                                    else if(fileResponseString.contains("duplicate call rejected"))
+                                    {
+                                        //Rdio Server is telling us to skip audio upload - someone already uploaded it
+                                        audioRecording.removePendingReplay();
+                                    }
+                                    else
+                                    {
+                                        setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
+                                        mLog.error("Rdio Scanner API file upload fail [" +
+                                            fileResponse.statusCode() + "] response [" +
+                                            fileResponse.body() + "]");
+                                    }
+
+
+                                }
+                         
                             });
                     }
                     else
@@ -333,24 +338,6 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                         audioRecording.removePendingReplay();
                     }
                 }
-                /*
-                else if(urlResponse.startsWith("1 SKIPPED"))
-                {
-                    //RdioScanner is telling us to skip audio upload - someone already uploaded it
-                    audioRecording.removePendingReplay();
-                }
-                else
-                {
-                    mLog.error("Rdio Scanner API upload URL request failed [" + urlResponse + "]");
-                    setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
-                    incrementErrorAudioCount();
-                    broadcast(new BroadcastEvent(RdioScannerBroadcaster.this,
-                        BroadcastEvent.Event.BROADCASTER_ERROR_COUNT_CHANGE));
-                    audioRecording.removePendingReplay();
-                }
-                                }
-                */
-
                 catch(Exception e)
                 {
                     mLog.error("Unknown Error", e);
