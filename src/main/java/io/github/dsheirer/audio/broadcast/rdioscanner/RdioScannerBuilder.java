@@ -87,6 +87,20 @@ public class RdioScannerBuilder
     }
 
     /**
+     * Adds a byte[] part to the call
+     */
+    public RdioScannerBuilder addPart(FormField key, byte[] value)
+    {
+        if(key != null && value != null)
+        {
+            mParts.add(new Part(key.getHeader(), value));
+        }
+
+        return this;
+    }
+
+
+    /**
      * Creates a form-data item
      */
     private static String formatPart(Part part, String boundary)
