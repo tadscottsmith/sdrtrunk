@@ -87,20 +87,6 @@ public class RdioScannerBuilder
     }
 
     /**
-     * Adds a byte[] part to the call
-     */
-    public RdioScannerBuilder addPart(FormField key, byte[] value)
-    {
-        if(key != null && value != null)
-        {
-            mParts.add(new Part(key.getHeader(), value));
-        }
-
-        return this;
-    }
-
-
-    /**
      * Creates a form-data item
      */
     private static String formatPart(Part part, String boundary)
@@ -154,6 +140,9 @@ public class RdioScannerBuilder
         sb.append(formatFilePart(BOUNDARY));
 
 
+        /**
+        * We need to create a ByteArray consisting of the Sting "parts" and the audio file bytes
+        */
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         
         try
@@ -165,7 +154,6 @@ public class RdioScannerBuilder
             {
                 outputStream.write(audioBytes);
             }
-            
 
             sb = new StringBuilder();
             sb.append("\r\n");

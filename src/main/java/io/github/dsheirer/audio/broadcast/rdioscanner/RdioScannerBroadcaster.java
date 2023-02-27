@@ -20,6 +20,9 @@
 package io.github.dsheirer.audio.broadcast.rdioscanner;
 
 import com.google.common.net.HttpHeaders;
+import com.google.common.base.Joiner;
+import io.github.dsheirer.alias.Alias;
+import io.github.dsheirer.alias.AliasList;
 import io.github.dsheirer.alias.AliasModel;
 import io.github.dsheirer.audio.broadcast.AbstractAudioBroadcaster;
 import io.github.dsheirer.audio.broadcast.AudioRecording;
@@ -88,6 +91,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
         .build();
     private long mLastConnectionAttempt;
     private long mConnectionAttemptInterval = 5000; //Every 5 seconds
+    private AliasModel mAliasModel;
 
     /**
      * Constructs an instance of the broadcaster
@@ -98,6 +102,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                        MP3Setting mp3Setting, AliasModel aliasModel)
     {
         super(config);
+        mAliasModel = aliasModel;
     }
 
     /**
@@ -235,6 +240,10 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                 String talkgroup = getTo(audioRecording);
                 String radioId = getFrom(audioRecording);
                 Long frequency = getFrequency(audioRecording);
+                String patches = getPatches(audioRecording);
+                String talkgroupLabel = getTalkgroupLabel(audioRecording);
+                String talkgroupGroup = getTalkgroupGroup(audioRecording);
+                String systemLabel = getSystemLabel(audioRecording);
 
                 try
                 {
@@ -256,13 +265,13 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                             bodyBuilder.addPart(FormField.KEY, getBroadcastConfiguration().getApiKey())
                             .addPart(FormField.SYSTEM, getBroadcastConfiguration().getSystemID())
                             .addFile(audioBytes)
-                            .addPart(FormField.AUDIO_NAME, "@" + audioRecording.getPath())
-                            .addPart(FormField.AUDIO_TYPE, "audio/mpeg")
-                            //.addPart(FormField.CALL_DURATION, durationSeconds)
                             .addPart(FormField.DATE_TIME, timestampSeconds)
                             .addPart(FormField.TALKGROUP_ID, talkgroup)
                             .addPart(FormField.SOURCE, radioId)
-                            .addPart(FormField.FREQUENCY, frequency);
+                            .addPart(FormField.FREQUENCY, frequency)
+                            .addPart(FormField.TALKGROUP_LABEL, talkgroupLabel)
+                            .addPart(FormField.TALKGROUP_GROUP, talkgroupGroup)
+                            .addPart(FormField.SYSTEM_LABEL, systemLabel);
                             //.addPart(FormField.ENCODING, ENCODING_TYPE_MP3);
 
                         HttpRequest fileRequest = HttpRequest.newBuilder()
@@ -389,7 +398,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
             }
         }
 
-        return new Long(0);
+        return Long.valueOf(0);
     }
 
     /**
@@ -434,20 +443,93 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
     }
 
     /**
-     * Formats a patch group
+     * Creates a formatted string with the Talkgroup Label from the Audio Recording Alias
+     * 
      */
-    public static String format(PatchGroupIdentifier patchGroupIdentifier)
+    private String getTalkgroupLabel(AudioRecording audioRecording)
     {
-        PatchGroup patchGroup = patchGroupIdentifier.getValue();
+
+        AliasList aliasList = mAliasModel.getAliasList(audioRecording.getIdentifierCollection());
+        Identifier identifier = audioRecording.getIdentifierCollection().getToIdentifier();
 
         StringBuilder sb = new StringBuilder();
-        sb.append(patchGroup.getPatchGroup().getValue().toString());
-        for(TalkgroupIdentifier patched: patchGroup.getPatchedGroupIdentifiers())
+        if(identifier != null)
         {
-            sb.append(",").append(patched.getValue());
+            List<Alias> aliases = aliasList.getAliases(identifier);
+            if(!aliases.isEmpty())
+            {
+                sb.append(aliases.get(0));
+            }
+
+        }
+            
+        return sb.toString();
+    }
+
+    /**
+     * Creates a formatted string with the Talkgroup Group from the Audio Recording Alias
+     * 
+     */
+    private String getTalkgroupGroup(AudioRecording audioRecording)
+    {
+
+        AliasList aliasList = mAliasModel.getAliasList(audioRecording.getIdentifierCollection());
+        Identifier identifier = audioRecording.getIdentifierCollection().getToIdentifier();
+
+        StringBuilder sb = new StringBuilder();
+        if(identifier != null)
+        {
+            List<Alias> aliases = aliasList.getAliases(identifier);
+            if(!aliases.isEmpty())
+            {
+                sb.append(aliases.get(0).getGroup());
+            }
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Creates a formatted string with the System Label from the Audio Recording Alias
+     * 
+     */
+    private String getSystemLabel(AudioRecording audioRecording)
+    {
+        List<Identifier> systems = audioRecording.getIdentifierCollection().getIdentifiers(Form.SYSTEM);
+
+        StringBuilder sb = new StringBuilder();
+        if(!systems.isEmpty())
+        {
+           sb.append(systems.get(0));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Creates a formatted string with the patched talkgroups
+     */
+    public static String getPatches(AudioRecording audioRecording)
+    {
+        Identifier identifier = audioRecording.getIdentifierCollection().getToIdentifier();
+
+        if(identifier instanceof PatchGroupIdentifier patchGroupIdentifier)
+        {
+            PatchGroup patchGroup = patchGroupIdentifier.getValue();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("[");
+            sb.append(patchGroup.getPatchGroup().getValue().toString());
+            for(TalkgroupIdentifier patched: patchGroup.getPatchedGroupIdentifiers())
+            {
+                sb.append(",").append(patched.getValue());
+            }
+            sb.append("]");
+            mLog.error("Patches: " + sb);
+            return sb.toString();
+        }
+
+        return "[]";
     }
 
     /**
