@@ -163,7 +163,7 @@ public class RdioScannerBuilder
         }
         catch(IOException e)
         {
-            mLog.error("Rdio Scanner API - unable to create POST reqeust.");
+            //mLog.error("Rdio Scanner API - unable to create POST reqeust.");
         }
 
         return HttpRequest.BodyPublishers.ofByteArray(outputStream.toByteArray());
