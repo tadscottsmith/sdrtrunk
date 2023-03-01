@@ -20,7 +20,7 @@
 package io.github.dsheirer.audio.broadcast.rdioscanner;
 
 /**
- * HTTP headers used for posting to RdioScanner calls api
+ * HTTP headers used for posting to Rdio Scanner API
  */
 public enum FormField
 {

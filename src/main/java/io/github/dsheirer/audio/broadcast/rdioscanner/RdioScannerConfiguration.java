@@ -32,7 +32,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 
 /**
- * Streaming configuration for RdioScanner Calls API.
+ * Streaming configuration for Rdio Scanner API.
  *
  * Note: this API is not a streaming audio service, rather a completed call push service.  However, it fits nicely
  * with the structure of the audio streaming subsystem in sdrtrunk

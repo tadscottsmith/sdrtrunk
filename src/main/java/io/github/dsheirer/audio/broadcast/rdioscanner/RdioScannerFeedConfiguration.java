@@ -72,7 +72,7 @@ public class RdioScannerFeedConfiguration extends IcecastTCPConfiguration
         }
         catch(Exception e)
         {
-            mLog.error("Error creating RdioScanner configuration from radio reference user feed instance");
+            mLog.error("Error creating Rdio Scanner configuration from radio reference user feed instance");
         }
 
         return config;

@@ -70,9 +70,8 @@ import java.util.concurrent.TimeUnit;
 
 
 /**
- * Audio broadcaster to push completed audio recordings to the RdioScanner call push API.
+ * Audio broadcaster to push completed audio recordings to the Rdio Scanner call upload API.
  *
- * Note: this is not the same as the RdioScanner Feeds (ie streaming) service
  */
 public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScannerConfiguration>
 {
@@ -169,6 +168,8 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
      * Indicates if this broadcaster continues to have successful connections to and transactions with the remote
      * server.  If there is a connectivity or other issue, the broadcast state is set to temporary error and
      * the audio processor thread will persistently invoke this method to attempt a reconnect.
+     *
+     * Rdio Scanner does not have a test API endpoint, so we look for the incomplete call response.
      */
     private boolean connected()
     {
@@ -220,8 +221,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
     }
 
     /**
-     * Processes any enqueued audio recordings.  The RdioScanner calls API uses a two-step process that includes
-     * requesting an upload URL and then uploading the audio recording to that URL.  This method employs asynchronous
+     * Processes any enqueued audio recordings. This method employs asynchronous
      * interaction with the server, so multiple audio recording uploads can occur simultaneously.
      */
     private void processRecordingQueue()
@@ -271,8 +271,8 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                             .addPart(FormField.FREQUENCY, frequency)
                             .addPart(FormField.TALKGROUP_LABEL, talkgroupLabel)
                             .addPart(FormField.TALKGROUP_GROUP, talkgroupGroup)
-                            .addPart(FormField.SYSTEM_LABEL, systemLabel);
-                            //.addPart(FormField.ENCODING, ENCODING_TYPE_MP3);
+                            .addPart(FormField.SYSTEM_LABEL, systemLabel)
+                            .addPart(FormField.PATCHES, patches);
 
                         HttpRequest fileRequest = HttpRequest.newBuilder()
                             .uri(URI.create(getBroadcastConfiguration().getHost()))
@@ -320,7 +320,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                     }
                                     else if(fileResponseString.contains("duplicate call rejected"))
                                     {
-                                        //Rdio Server is telling us to skip audio upload - someone already uploaded it
+                                        //Rdio Scanner is telling us to skip audio upload - someone already uploaded it
                                         audioRecording.removePendingReplay();
                                     }
                                     else
@@ -444,6 +444,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
 
     /**
      * Creates a formatted string with the Talkgroup Label from the Audio Recording Alias
+     * If this is a PatchGroup we return only the first label as the primary talkgroup label.
      * 
      */
     private String getTalkgroupLabel(AudioRecording audioRecording)
@@ -468,6 +469,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
 
     /**
      * Creates a formatted string with the Talkgroup Group from the Audio Recording Alias
+     * If this is a PatchGroup we return only the first group as the primary talkgroup group.
      * 
      */
     private String getTalkgroupGroup(AudioRecording audioRecording)
@@ -491,6 +493,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
 
     /**
      * Creates a formatted string with the System Label from the Audio Recording Alias
+     * If this is a PatchGroup we return only the first sytem as the primary talkgroup system.
      * 
      */
     private String getSystemLabel(AudioRecording audioRecording)
@@ -519,13 +522,15 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
 
             StringBuilder sb = new StringBuilder();
             sb.append("[");
+            
             sb.append(patchGroup.getPatchGroup().getValue().toString());
+            
             for(TalkgroupIdentifier patched: patchGroup.getPatchedGroupIdentifiers())
             {
                 sb.append(",").append(patched.getValue());
             }
+            
             sb.append("]");
-            mLog.error("Patches: " + sb);
             return sb.toString();
         }
 
