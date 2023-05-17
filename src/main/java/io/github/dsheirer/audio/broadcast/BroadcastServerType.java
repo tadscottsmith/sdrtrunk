@@ -29,7 +29,7 @@ public enum BroadcastServerType
      * Broadcastify calls - completed audio recording push service
      */
     BROADCASTIFY_CALL("Broadcastify Call", "images/broadcastify.png"),
-
+    OPENMHZ("OpenMHz", "images/openmhz.png"),
     ICECAST_HTTP("Icecast 2 (v2.4+)", "images/icecast.png"),
     ICECAST_TCP("Icecast (v2.3)", "images/icecast.png"),
     SHOUTCAST_V1("Shoutcast v1.x", "images/shoutcast.png"),
