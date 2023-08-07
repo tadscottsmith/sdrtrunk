@@ -69,6 +69,7 @@ public class BroadcastFactory
                             inputAudioFormat, mp3Setting, aliasModel);
                 case RDIOSCANNER_CALL:
                     return new RdioScannerBroadcaster((RdioScannerConfiguration)configuration,
+                            inputAudioFormat, mp3Setting, aliasModel);
                 case OPENMHZ:
                     return new OpenMHzBroadcaster((OpenMHzConfiguration)configuration,
                             inputAudioFormat, mp3Setting, aliasModel);
