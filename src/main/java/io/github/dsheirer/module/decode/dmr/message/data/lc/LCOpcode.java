@@ -46,6 +46,14 @@ public enum LCOpcode
 
     FULL_CAPACITY_PLUS_GROUP_VOICE_CHANNEL_USER(Vendor.MOTOROLA_CAPACITY_PLUS, true, 0, "GROUP VOICE CHANNEL USER"),
     FULL_CAPACITY_PLUS_WIDE_AREA_VOICE_CHANNEL_USER(Vendor.MOTOROLA_CAPACITY_PLUS, true, 4, "WAN GROUP VOICE CHANNEL USER"),
+    //Observed on Cap+ Multi-Site System during an encrypted voice call
+    FULL_CAPACITY_PLUS_ENCRYPTED_VOICE_CHANNEL_USER(Vendor.MOTOROLA_CAPACITY_PLUS, true, 32, "ENCRYPTED VOICE CHANNEL USER"),
+    //Cap+ opcodes from https://forums.radioreference.com/threads/understanding-capacity-plus-trunking-some-more.452566/
+    //FLCO 0: Group Call Maintenance
+    //FLCO 3: Private Call Maintenance (TermLC)
+    //FLCO 4: Group Call Grant
+    //FLCO 7: Private Call Grant
+    //FLCO 35: Private Call Maintenance (EMB)
 
     FULL_HYTERA_GROUP_VOICE_CHANNEL_USER(Vendor.HYTERA_68, true, 0, "HYTERA GROUP VOICE CHANNEL USER"),
     FULL_HYTERA_UNIT_TO_UNIT_VOICE_CHANNEL_USER(Vendor.HYTERA_68, true, 3, "HYTERA UNIT-TO-UNIT VOICE CHANNEL USER"),
@@ -59,14 +67,14 @@ public enum LCOpcode
     //CAP+ SLCO 15 = Rest Channel https://forums.radioreference.com/threads/understanding-capacity-plus-trunking.209318/page-7
     SHORT_CAPACITY_PLUS_REST_CHANNEL_NOTIFICATION(Vendor.MOTOROLA_CAPACITY_PLUS, false,15, "REST CHANNEL NOTIFICATION"),
 
-    SHORT_STANDARD_XPT_CHANNEL(Vendor.STANDARD, false, 8, "HYTERA XPT CHANNEL"),
+    SHORT_STANDARD_XPT_CHANNEL(Vendor.STANDARD, false, 8, "STANDARD XPT CHANNEL"),
     SHORT_HYTERA_XPT_CHANNEL(Vendor.HYTERA_68, false, 8, "HYTERA XPT CHANNEL"),
 
     SHORT_CONNECT_PLUS_TRAFFIC_CHANNEL(Vendor.STANDARD, false, 9, "TRAFFIC CHANNEL INFO"),
     SHORT_CONNECT_PLUS_CONTROL_CHANNEL(Vendor.STANDARD, false, 10, "CONTROL CHANNEL INFO"),
 
 
-    SHORT_STANDARD_UNKNOWN(Vendor.STANDARD,false,-1, "SHORT UNKNOWN");
+    SHORT_STANDARD_UNKNOWN(Vendor.STANDARD,false,-1, "UNKNOWN");
 
     private static final EnumSet<LCOpcode> TALKER_ALIAS_OPCODES = EnumSet.of(FULL_STANDARD_TALKER_ALIAS_HEADER,
             FULL_STANDARD_TALKER_ALIAS_BLOCK_1, FULL_STANDARD_TALKER_ALIAS_BLOCK_2, FULL_STANDARD_TALKER_ALIAS_BLOCK_3);
