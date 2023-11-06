@@ -40,6 +40,8 @@ public class StreamEditorFactory
                 return new BroadcastifyStreamEditor(playlistManager);
             case RDIOSCANNER_CALL:
                 return new RdioScannerEditor(playlistManager);
+            case TRUNKTRANSCRIBE_CALL:
+                return new TrunkTranscribeEditor(playlistManager);
             case BROADCASTIFY_CALL:
                 return new BroadcastifyCallEditor(playlistManager);
             case ICECAST_HTTP:

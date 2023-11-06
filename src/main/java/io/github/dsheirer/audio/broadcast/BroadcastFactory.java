@@ -25,6 +25,9 @@ import io.github.dsheirer.audio.broadcast.broadcastify.BroadcastifyFeedConfigura
 import io.github.dsheirer.audio.broadcast.rdioscanner.RdioScannerBroadcaster;
 import io.github.dsheirer.audio.broadcast.rdioscanner.RdioScannerConfiguration;
 import io.github.dsheirer.audio.broadcast.rdioscanner.RdioScannerFeedConfiguration;
+import io.github.dsheirer.audio.broadcast.trunktranscribe.TrunkTranscribeBroadcaster;
+import io.github.dsheirer.audio.broadcast.trunktranscribe.TrunkTranscribeConfiguration;
+import io.github.dsheirer.audio.broadcast.trunktranscribe.TrunkTranscribeFeedConfiguration;
 import io.github.dsheirer.audio.broadcast.icecast.IcecastHTTPAudioBroadcaster;
 import io.github.dsheirer.audio.broadcast.icecast.IcecastHTTPConfiguration;
 import io.github.dsheirer.audio.broadcast.icecast.IcecastTCPAudioBroadcaster;
@@ -67,6 +70,9 @@ public class BroadcastFactory
                 case RDIOSCANNER_CALL:
                     return new RdioScannerBroadcaster((RdioScannerConfiguration)configuration,
                             inputAudioFormat, mp3Setting, aliasModel);
+                case TRUNKTRANSCRIBE_CALL:
+                    return new TrunkTranscribeBroadcaster((TrunkTranscribeConfiguration)configuration,
+                            inputAudioFormat, mp3Setting, aliasModel);
                 case BROADCASTIFY:
                     return new IcecastTCPAudioBroadcaster((BroadcastifyFeedConfiguration) configuration,
                             inputAudioFormat, mp3Setting, aliasModel);
@@ -107,6 +113,8 @@ public class BroadcastFactory
                 return new BroadcastifyCallConfiguration(format);
             case RDIOSCANNER_CALL:
                 return new RdioScannerConfiguration(format);
+            case TRUNKTRANSCRIBE_CALL:
+                return new TrunkTranscribeConfiguration(format);
             case BROADCASTIFY:
                 return new BroadcastifyFeedConfiguration(format);
             case ICECAST_HTTP:
