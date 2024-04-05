@@ -28,6 +28,9 @@ import io.github.dsheirer.audio.broadcast.rdioscanner.RdioScannerFeedConfigurati
 import io.github.dsheirer.audio.broadcast.openmhz.OpenMHzBroadcaster;
 import io.github.dsheirer.audio.broadcast.openmhz.OpenMHzConfiguration;
 import io.github.dsheirer.audio.broadcast.openmhz.OpenMHzFeedConfiguration;
+import io.github.dsheirer.audio.broadcast.trunkingrecorder.TrunkingRecorderBroadcaster;
+import io.github.dsheirer.audio.broadcast.trunkingrecorder.TrunkingRecorderConfiguration;
+import io.github.dsheirer.audio.broadcast.trunkingrecorder.TrunkingRecorderFeedConfiguration;
 import io.github.dsheirer.audio.broadcast.icecast.IcecastHTTPAudioBroadcaster;
 import io.github.dsheirer.audio.broadcast.icecast.IcecastHTTPConfiguration;
 import io.github.dsheirer.audio.broadcast.icecast.IcecastTCPAudioBroadcaster;
@@ -73,6 +76,9 @@ public class BroadcastFactory
                 case OPENMHZ:
                     return new OpenMHzBroadcaster((OpenMHzConfiguration)configuration,
                         inputAudioFormat, mp3Setting, aliasModel);
+                case TRUNKINGRECORDER:
+                    return new TrunkingRecorderBroadcaster((TrunkingRecorderConfiguration)configuration,
+                        inputAudioFormat, mp3Setting, aliasModel);
                 case BROADCASTIFY:
                     return new IcecastTCPAudioBroadcaster((BroadcastifyFeedConfiguration) configuration,
                             inputAudioFormat, mp3Setting, aliasModel);
@@ -117,6 +123,8 @@ public class BroadcastFactory
                 return new BroadcastifyFeedConfiguration(format);
             case OPENMHZ:
                 return new OpenMHzConfiguration(format);
+            case TRUNKINGRECORDER:
+                return new TrunkingRecorderConfiguration(format);
             case ICECAST_HTTP:
                 return new IcecastHTTPConfiguration(format);
             case ICECAST_TCP:
