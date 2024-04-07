@@ -38,6 +38,7 @@ import io.github.dsheirer.message.IMessage;
 import io.github.dsheirer.message.IMessageListener;
 import io.github.dsheirer.module.decode.config.DecodeConfiguration;
 import io.github.dsheirer.module.decode.event.DecodeEvent;
+import io.github.dsheirer.module.decode.event.DecodeEventDuplicateDetector;
 import io.github.dsheirer.module.decode.event.DecodeEventType;
 import io.github.dsheirer.module.decode.event.IDecodeEvent;
 import io.github.dsheirer.module.decode.event.IDecodeEventProvider;
@@ -110,7 +111,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     private Listener<IMessage> mMessageListener;
     private boolean mIgnoreDataCalls;
     private boolean mIdleNullProtect = false;
-
+    //Used only for data calls
+    private DecodeEventDuplicateDetector mDuplicateDetector = new DecodeEventDuplicateDetector();
     private ReentrantLock mLock = new ReentrantLock();
 
     /**
@@ -229,6 +231,12 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     {
         if(mDecodeEventListener != null)
         {
+            if(decodeEvent.getEventType() == DecodeEventType.DATA_CALL &&
+               mDuplicateDetector.isDuplicate(decodeEvent, System.currentTimeMillis()))
+            {
+                return;
+            }
+
             mDecodeEventListener.receive(decodeEvent);
         }
     }

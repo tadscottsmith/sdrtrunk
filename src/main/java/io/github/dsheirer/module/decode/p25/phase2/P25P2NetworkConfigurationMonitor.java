@@ -24,15 +24,18 @@ import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBand;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.MacMessage;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.AdjacentStatusBroadcastExplicit;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.AdjacentStatusBroadcastExtendedExplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.AdjacentStatusBroadcastImplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.FrequencyBandUpdate;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.FrequencyBandUpdateTDMAAbbreviated;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.FrequencyBandUpdateTDMAExtended;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.FrequencyBandUpdateVUHF;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.MacStructure;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.NetworkStatusBroadcastExplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.NetworkStatusBroadcastImplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.RfssStatusBroadcastExplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.RfssStatusBroadcastImplicit;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.SNDCPDataChannelAnnouncement;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.SecondaryControlChannelBroadcastExplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.SecondaryControlChannelBroadcastImplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.SystemServiceBroadcast;
@@ -66,12 +69,16 @@ public class P25P2NetworkConfigurationMonitor
     //Current Site Secondary Control Channels
     private Map<String,IChannelDescriptor> mSecondaryControlChannels = new TreeMap<>();
 
+    //SNDCP Data Channel
+    private SNDCPDataChannelAnnouncement mSNDCPDataChannelAnnouncement;
+
     //Current Site Services
     private SystemServiceBroadcast mSystemServiceBroadcast;
 
     //Neighbor Sites
     private Map<Integer, AdjacentStatusBroadcastImplicit> mNeighborSitesAbbreviated = new HashMap<>();
     private Map<Integer, AdjacentStatusBroadcastExplicit> mNeighborSitesExtended = new HashMap<>();
+    private Map<Integer, AdjacentStatusBroadcastExtendedExplicit> mNeighborSitesExtendedExplicit = new HashMap<>();
 
     /**
      * Constructs an instance.
@@ -112,30 +119,26 @@ public class P25P2NetworkConfigurationMonitor
         switch((mac.getOpcode()))
         {
             case PHASE1_73_IDENTIFIER_UPDATE_TDMA_ABBREVIATED:
-                if(mac instanceof FrequencyBandUpdateTDMAAbbreviated)
+                if(mac instanceof FrequencyBandUpdateTDMAAbbreviated tdma)
                 {
-                    FrequencyBandUpdateTDMAAbbreviated tdma = (FrequencyBandUpdateTDMAAbbreviated)mac;
                     mFrequencyBandMap.put(tdma.getIdentifier(), tdma);
                 }
                 break;
             case PHASE1_74_IDENTIFIER_UPDATE_V_UHF:
-                if(mac instanceof FrequencyBandUpdateVUHF)
+                if(mac instanceof FrequencyBandUpdateVUHF vhf)
                 {
-                    FrequencyBandUpdateVUHF vhf = (FrequencyBandUpdateVUHF)mac;
                     mFrequencyBandMap.put(vhf.getIdentifier(), vhf);
                 }
                 break;
             case PHASE1_78_SYSTEM_SERVICE_BROADCAST:
-                if(mac instanceof SystemServiceBroadcast)
+                if(mac instanceof SystemServiceBroadcast ssb)
                 {
-                    mSystemServiceBroadcast = (SystemServiceBroadcast)mac;
+                    mSystemServiceBroadcast = ssb;
                 }
                 break;
             case PHASE1_79_SECONDARY_CONTROL_CHANNEL_BROADCAST_IMPLICIT:
-                if(mac instanceof SecondaryControlChannelBroadcastImplicit)
+                if(mac instanceof SecondaryControlChannelBroadcastImplicit sccba)
                 {
-                    SecondaryControlChannelBroadcastImplicit sccba = (SecondaryControlChannelBroadcastImplicit)mac;
-
                     for(IChannelDescriptor channel: sccba.getChannels())
                     {
                         mSecondaryControlChannels.put(channel.toString(), channel);
@@ -143,59 +146,71 @@ public class P25P2NetworkConfigurationMonitor
                 }
                 break;
             case PHASE1_7A_RFSS_STATUS_BROADCAST_IMPLICIT:
-                if(mac instanceof RfssStatusBroadcastImplicit)
+                if(mac instanceof RfssStatusBroadcastImplicit rsbe)
                 {
-                    mRFSSStatusBroadcastImplicit = (RfssStatusBroadcastImplicit)mac;
+                    mRFSSStatusBroadcastImplicit = rsbe;
                 }
                 break;
             case PHASE1_7B_NETWORK_STATUS_BROADCAST_IMPLICIT:
-                if(mac instanceof NetworkStatusBroadcastImplicit)
+                if(mac instanceof NetworkStatusBroadcastImplicit nsbe)
                 {
-                    mNetworkStatusBroadcastImplicit = (NetworkStatusBroadcastImplicit)mac;
+                    mNetworkStatusBroadcastImplicit = nsbe;
                 }
                 break;
             case PHASE1_7C_ADJACENT_STATUS_BROADCAST_IMPLICIT:
-                if(mac instanceof AdjacentStatusBroadcastImplicit)
+                if(mac instanceof AdjacentStatusBroadcastImplicit asba)
                 {
-                    AdjacentStatusBroadcastImplicit asba = (AdjacentStatusBroadcastImplicit)mac;
                     mNeighborSitesAbbreviated.put((int)asba.getSite().getValue(), asba);
                 }
                 break;
             case PHASE1_7D_IDENTIFIER_UPDATE:
-                if(mac instanceof FrequencyBandUpdate)
+                if(mac instanceof FrequencyBandUpdate band)
                 {
-                    FrequencyBandUpdate band = (FrequencyBandUpdate)mac;
                     mFrequencyBandMap.put(band.getIdentifier(), band);
                 }
                 break;
-            case PHASE1_E9_SECONDARY_CONTROL_CHANNEL_BROADCAST_EXPLICIT:
-                if(mac instanceof SecondaryControlChannelBroadcastExplicit)
+            case PHASE1_D6_SNDCP_DATA_CHANNEL_ANNOUNCEMENT:
+                if(mac instanceof SNDCPDataChannelAnnouncement s)
                 {
-                    SecondaryControlChannelBroadcastExplicit sccbe = (SecondaryControlChannelBroadcastExplicit)mac;
-
+                    mSNDCPDataChannelAnnouncement = s;
+                }
+                break;
+            case PHASE1_E9_SECONDARY_CONTROL_CHANNEL_BROADCAST_EXPLICIT:
+                if(mac instanceof SecondaryControlChannelBroadcastExplicit sccbe)
+                {
                     for(IChannelDescriptor channel: sccbe.getChannels())
                     {
                         mSecondaryControlChannels.put(channel.toString(), channel);
                     }
                 }
                 break;
-            case PHASE1_FA_RFSS_STATUS_BROADCAST_EXPLICIT:
-                if(mac instanceof RfssStatusBroadcastExplicit)
+            case PHASE1_F3_IDENTIFIER_UPDATE_TDMA_EXTENDED:
+                if(mac instanceof FrequencyBandUpdateTDMAExtended tdma)
                 {
-                    mRFSSStatusBroadcastExplicit = (RfssStatusBroadcastExplicit)mac;
+                    mFrequencyBandMap.put(tdma.getIdentifier(), tdma);
+                }
+                break;
+            case PHASE1_FA_RFSS_STATUS_BROADCAST_EXPLICIT:
+                if(mac instanceof RfssStatusBroadcastExplicit rsbe)
+                {
+                    mRFSSStatusBroadcastExplicit = rsbe;
                 }
                 break;
             case PHASE1_FB_NETWORK_STATUS_BROADCAST_EXPLICIT:
-                if(mac instanceof NetworkStatusBroadcastExplicit)
+                if(mac instanceof NetworkStatusBroadcastExplicit nsbe)
                 {
-                    mNetworkStatusBroadcastExplicit = (NetworkStatusBroadcastExplicit)mac;
+                    mNetworkStatusBroadcastExplicit = nsbe;
                 }
                 break;
             case PHASE1_FC_ADJACENT_STATUS_BROADCAST_EXPLICIT:
-                if(mac instanceof AdjacentStatusBroadcastExplicit)
+                if(mac instanceof AdjacentStatusBroadcastExplicit asbe)
                 {
-                    AdjacentStatusBroadcastExplicit asbe = (AdjacentStatusBroadcastExplicit)mac;
                     mNeighborSitesExtended.put((int)asbe.getSite().getValue(), asbe);
+                }
+            case PHASE1_FE_ADJACENT_STATUS_BROADCAST_EXTENDED_EXPLICIT:
+                if(mac instanceof AdjacentStatusBroadcastExtendedExplicit a)
+                {
+                    mNeighborSitesExtendedExplicit.put(a.getSite().getValue(), a);
                 }
                 break;
         }
@@ -263,7 +278,12 @@ public class P25P2NetworkConfigurationMonitor
         }
         else
         {
-            sb.append("  UNKNOWN");
+            sb.append("  UNKNOWN\n");
+        }
+
+        if(mSNDCPDataChannelAnnouncement != null)
+        {
+            sb.append(" DATA CHANNEL:").append(mSNDCPDataChannelAnnouncement.getChannel()).append("\n");
         }
 
         if(!mSecondaryControlChannels.isEmpty())
@@ -290,6 +310,7 @@ public class P25P2NetworkConfigurationMonitor
         Set<Integer> sites = new TreeSet<>();
         sites.addAll(mNeighborSitesAbbreviated.keySet());
         sites.addAll(mNeighborSitesExtended.keySet());
+        sites.addAll(mNeighborSitesExtendedExplicit.keySet());
 
         if(sites.isEmpty())
         {
@@ -315,6 +336,18 @@ public class P25P2NetworkConfigurationMonitor
                         else if(mNeighborSitesExtended.containsKey(site))
                         {
                             AdjacentStatusBroadcastExplicit asb = mNeighborSitesExtended.get(site);
+                            sb.append("  SYSTEM:").append(format(asb.getSystem(), 3));
+                            sb.append(" RFSS:").append(format(asb.getRFSS(), 2));
+                            sb.append(" SITE:").append(format(asb.getSite(), 2));
+                            sb.append(" LRA:").append(format(asb.getLRA(), 2));
+                            sb.append(" CHANNEL:").append(asb.getChannel());
+                            sb.append(" DOWNLINK:").append(asb.getChannel().getDownlinkFrequency());
+                            sb.append(" UPLINK:").append(asb.getChannel().getUplinkFrequency());
+                            sb.append(" STATUS:").append(asb.getSiteFlags()).append("\n");
+                        }
+                        else if(mNeighborSitesExtendedExplicit.containsKey(site))
+                        {
+                            AdjacentStatusBroadcastExtendedExplicit asb = mNeighborSitesExtendedExplicit.get(site);
                             sb.append("  SYSTEM:").append(format(asb.getSystem(), 3));
                             sb.append(" RFSS:").append(format(asb.getRFSS(), 2));
                             sb.append(" SITE:").append(format(asb.getSite(), 2));

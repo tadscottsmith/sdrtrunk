@@ -70,6 +70,8 @@ import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCGroupVo
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCGroupVoiceChannelUpdateExplicit;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCMessageUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCMessageUpdateExtended;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCNetworkStatusBroadcast;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCNetworkStatusBroadcastExplicit;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCRFSSStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCRFSSStatusBroadcastExplicit;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCStatusUpdate;
@@ -94,7 +96,9 @@ import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCGr
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCIndividualDataChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMessageUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMotorolaGroupRegroupChannelGrant;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCNetworkStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCProtectionParameterBroadcast;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCRFSSStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCStatusUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCTelephoneInterconnectChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCTelephoneInterconnectChannelGrantUpdate;
@@ -144,6 +148,7 @@ import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.Gro
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.GroupVoiceChannelGrantUpdateExplicit;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.LocationRegistrationResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.MessageUpdate;
+import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.NetworkStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.QueuedResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.RFSSStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.RoamingAddressCommand;
@@ -536,8 +541,40 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                 //Network configuration messages
                 case OSP_ADJACENT_STATUS_BROADCAST:
+                    mNetworkConfigurationMonitor.process(ambtc);
+                    break;
                 case OSP_NETWORK_STATUS_BROADCAST:
+                    if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                            mChannel.isStandardChannel() && ambtc instanceof AMBTCNetworkStatusBroadcast nsb &&
+                            nsb.getChannel().getDownlinkFrequency() > 0)
+                    {
+                        setCurrentChannel(nsb.getChannel());
+                        DecoderLogicalChannelNameIdentifier channelID =
+                                DecoderLogicalChannelNameIdentifier.create(nsb.getChannel().toString(), Protocol.APCO25);
+                        getIdentifierCollection().update(channelID);
+                        setCurrentFrequency(nsb.getChannel().getDownlinkFrequency());
+                        FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                                .create(nsb.getChannel().getDownlinkFrequency());
+                        getIdentifierCollection().update(frequencyID);
+
+                    }
+                    mNetworkConfigurationMonitor.process(ambtc);
+                    break;
                 case OSP_RFSS_STATUS_BROADCAST:
+                    if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                            mChannel.isStandardChannel() && ambtc instanceof AMBTCRFSSStatusBroadcast rsb &&
+                            rsb.getChannel().getDownlinkFrequency() > 0)
+                    {
+                        setCurrentChannel(rsb.getChannel());
+                        DecoderLogicalChannelNameIdentifier channelID =
+                                DecoderLogicalChannelNameIdentifier.create(rsb.getChannel().toString(), Protocol.APCO25);
+                        getIdentifierCollection().update(channelID);
+                        setCurrentFrequency(rsb.getChannel().getDownlinkFrequency());
+                        FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                                .create(rsb.getChannel().getDownlinkFrequency());
+                        getIdentifierCollection().update(frequencyID);
+
+                    }
                     mNetworkConfigurationMonitor.process(ambtc);
                     break;
 
@@ -1111,16 +1148,32 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case OSP_TDMA_SYNC_BROADCAST:
                 case OSP_SYSTEM_SERVICE_BROADCAST:
                 case OSP_SECONDARY_CONTROL_CHANNEL_BROADCAST:
-                case OSP_NETWORK_STATUS_BROADCAST:
                 case OSP_ADJACENT_STATUS_BROADCAST:
                 case OSP_IDENTIFIER_UPDATE:
                 case OSP_PROTECTION_PARAMETER_BROADCAST:
                 case OSP_PROTECTION_PARAMETER_UPDATE:
                     mNetworkConfigurationMonitor.process(tsbk);
                     break;
+                case OSP_NETWORK_STATUS_BROADCAST:
+                    if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                            mChannel.isStandardChannel() && tsbk instanceof NetworkStatusBroadcast nsb &&
+                            nsb.getChannel().getDownlinkFrequency() > 0)
+                    {
+                        setCurrentChannel(nsb.getChannel());
+                        DecoderLogicalChannelNameIdentifier channelID =
+                                DecoderLogicalChannelNameIdentifier.create(nsb.getChannel().toString(), Protocol.APCO25);
+                        getIdentifierCollection().update(channelID);
+                        setCurrentFrequency(nsb.getChannel().getDownlinkFrequency());
+                        FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                                .create(nsb.getChannel().getDownlinkFrequency());
+                        getIdentifierCollection().update(frequencyID);
+
+                    }
+                    mNetworkConfigurationMonitor.process(tsbk);
+                    break;
                 case OSP_RFSS_STATUS_BROADCAST:
-                    if(tsbk instanceof RFSSStatusBroadcast rfss && mChannel.isStandardChannel() &&
-                            (getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                    if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                            mChannel.isStandardChannel() && tsbk instanceof RFSSStatusBroadcast rfss &&
                             rfss.getChannel().getDownlinkFrequency() > 0)
                     {
                         setCurrentChannel(rfss.getChannel());
@@ -1391,8 +1444,11 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case MOTOROLA_OSP_QUEUED_RESPONSE:
                     processTSBKQueuedResponse(tsbk);
                 default:
-                    LOGGING_SUPPRESSOR.info(tsbk.getOpcode().name(), 1, "Unrecognized TSBK Opcode: " +
-                        tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber());
+                    if(!tsbk.getOpcode().name().startsWith("ISP"))
+                    {
+                        LOGGING_SUPPRESSOR.info(tsbk.getOpcode().name(), 1, "Unrecognized TSBK Opcode: " +
+                                tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber());
+                    }
                     break;
             }
         }
@@ -1485,7 +1541,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof UnitRegistrationResponse urr)
         {
-            broadcastEvent(tsbk, DecodeEventType.REGISTER, urr.getResponse() + " UNIT REGISTRATION - UNIT ID:" + urr.getRegisteredRadio());
+            broadcastEvent(tsbk, DecodeEventType.REGISTER, urr.getResponse() + " UNIT REGISTRATION - UNIT ID:" +
+                    urr.getRegisteredRadio());
         }
     }
 
@@ -1519,7 +1576,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         }
         else if(tsbk instanceof MotorolaDenyResponse mdr)
         {
-            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "DENY: " + mdr.getDeniedServiceType().getDescription() + " REASON: " + mdr.getDenyReason() + " - INFO: " + mdr.getAdditionalInfo());
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "DENY: " + mdr.getDeniedServiceType().getDescription()
+                    + " REASON: " + mdr.getDenyReason() + " - INFO: " + mdr.getAdditionalInfo());
         }
     }
 
@@ -1527,7 +1585,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof ExtendedFunctionCommand efc)
         {
-            broadcastEvent(tsbk, DecodeEventType.COMMAND, "FUNCTION: " + efc.getExtendedFunction() + " ARGUMENTS:" + efc.getArguments());
+            broadcastEvent(tsbk, DecodeEventType.COMMAND, "FUNCTION: " + efc.getExtendedFunction() +
+                    " ARGUMENTS:" + efc.getArguments());
         }
         else if(tsbk instanceof MotorolaExtendedFunctionCommand mefc)
         {
@@ -1568,11 +1627,11 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof AcknowledgeResponse ar)
         {
-            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "ACKNOWLEDGE " + ar.getAcknowledgedService());
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "ACKNOWLEDGE " + ar.getAcknowledgedService().getDescription());
         }
         else if(tsbk instanceof MotorolaAcknowledgeResponse mar)
         {
-            broadcastEvent(tsbk, DecodeEventType.ACKNOWLEDGE, "ACKNOWLEDGE " + mar.getAcknowledgedService());
+            broadcastEvent(tsbk, DecodeEventType.ACKNOWLEDGE, "ACKNOWLEDGE " + mar.getAcknowledgedService().getDescription());
         }
     }
 
@@ -1769,12 +1828,18 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
             //Network configuration messages
             case RFSS_STATUS_BROADCAST:
-                if(getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() == 0)
+                if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                        mChannel.isStandardChannel() && lcw instanceof LCRFSSStatusBroadcast sb &&
+                        sb.getChannel().getDownlinkFrequency() > 0)
                 {
-                    if(lcw instanceof LCRFSSStatusBroadcast rfss)
-                    {
-                        setCurrentChannel(rfss.getChannel());
-                    }
+                    setCurrentChannel(sb.getChannel());
+                    DecoderLogicalChannelNameIdentifier channelID =
+                            DecoderLogicalChannelNameIdentifier.create(sb.getChannel().toString(), Protocol.APCO25);
+                    getIdentifierCollection().update(channelID);
+                    setCurrentFrequency(sb.getChannel().getDownlinkFrequency());
+                    FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                            .create(sb.getChannel().getDownlinkFrequency());
+                    getIdentifierCollection().update(frequencyID);
                 }
 
                 if(isTerminator)
@@ -1785,12 +1850,63 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 mNetworkConfigurationMonitor.process(lcw);
                 break;
             case RFSS_STATUS_BROADCAST_EXPLICIT:
-                if(getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() == 0)
+                if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                        mChannel.isStandardChannel() && lcw instanceof LCRFSSStatusBroadcastExplicit sb &&
+                        sb.getChannel().getDownlinkFrequency() > 0)
                 {
-                    if(lcw instanceof LCRFSSStatusBroadcastExplicit rfss)
-                    {
-                        setCurrentChannel(rfss.getChannel());
-                    }
+                    setCurrentChannel(sb.getChannel());
+                    DecoderLogicalChannelNameIdentifier channelID =
+                            DecoderLogicalChannelNameIdentifier.create(sb.getChannel().toString(), Protocol.APCO25);
+                    getIdentifierCollection().update(channelID);
+                    setCurrentFrequency(sb.getChannel().getDownlinkFrequency());
+                    FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                            .create(sb.getChannel().getDownlinkFrequency());
+                    getIdentifierCollection().update(frequencyID);
+                }
+
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                mNetworkConfigurationMonitor.process(lcw);
+                break;
+
+            case NETWORK_STATUS_BROADCAST:
+                if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                        mChannel.isStandardChannel() && lcw instanceof LCNetworkStatusBroadcast sb &&
+                        sb.getChannel().getDownlinkFrequency() > 0)
+                {
+                    setCurrentChannel(sb.getChannel());
+                    DecoderLogicalChannelNameIdentifier channelID =
+                            DecoderLogicalChannelNameIdentifier.create(sb.getChannel().toString(), Protocol.APCO25);
+                    getIdentifierCollection().update(channelID);
+                    setCurrentFrequency(sb.getChannel().getDownlinkFrequency());
+                    FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                            .create(sb.getChannel().getDownlinkFrequency());
+                    getIdentifierCollection().update(frequencyID);
+                }
+
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                mNetworkConfigurationMonitor.process(lcw);
+                break;
+            case NETWORK_STATUS_BROADCAST_EXPLICIT:
+                if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                        mChannel.isStandardChannel() && lcw instanceof LCNetworkStatusBroadcastExplicit sb &&
+                        sb.getChannel().getDownlinkFrequency() > 0)
+                {
+                    setCurrentChannel(sb.getChannel());
+                    DecoderLogicalChannelNameIdentifier channelID =
+                            DecoderLogicalChannelNameIdentifier.create(sb.getChannel().toString(), Protocol.APCO25);
+                    getIdentifierCollection().update(channelID);
+                    setCurrentFrequency(sb.getChannel().getDownlinkFrequency());
+                    FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                            .create(sb.getChannel().getDownlinkFrequency());
+                    getIdentifierCollection().update(frequencyID);
                 }
 
                 if(isTerminator)
@@ -1803,8 +1919,6 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
             case ADJACENT_SITE_STATUS_BROADCAST:
             case ADJACENT_SITE_STATUS_BROADCAST_EXPLICIT:
-            case NETWORK_STATUS_BROADCAST:
-            case NETWORK_STATUS_BROADCAST_EXPLICIT:
             case PROTECTION_PARAMETER_BROADCAST:
             case SECONDARY_CONTROL_CHANNEL_BROADCAST:
             case SECONDARY_CONTROL_CHANNEL_BROADCAST_EXPLICIT:

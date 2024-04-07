@@ -25,6 +25,7 @@ import io.github.dsheirer.controller.channel.Channel;
 import io.github.dsheirer.dsp.psk.pll.IPhaseLockedLoop;
 import io.github.dsheirer.dsp.symbol.Dibit;
 import io.github.dsheirer.dsp.symbol.ISyncDetectListener;
+import io.github.dsheirer.identifier.patch.PatchGroupManager;
 import io.github.dsheirer.log.ApplicationLog;
 import io.github.dsheirer.message.IMessage;
 import io.github.dsheirer.message.MessageProviderModule;
@@ -230,8 +231,11 @@ public class P25P2MessageFramer implements Listener<Dibit>
 
         processingChain.addAudioSegmentListener(recordingManager);
         P25TrafficChannelManager trafficChannelManager = new P25TrafficChannelManager(channel);
-        processingChain.addModule(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_1, trafficChannelManager));
-        processingChain.addModule(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_2, trafficChannelManager));
+        PatchGroupManager patchGroupManager = new PatchGroupManager();
+        processingChain.addModule(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_1, trafficChannelManager,
+                patchGroupManager));
+        processingChain.addModule(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_2, trafficChannelManager,
+                patchGroupManager));
         processingChain.addModule(new P25P2AudioModule(userPreferences, P25P2Message.TIMESLOT_1, aliasList));
         processingChain.addModule(new P25P2AudioModule(userPreferences, P25P2Message.TIMESLOT_2, aliasList));
         MessageProviderModule messageProviderModule = new MessageProviderModule();

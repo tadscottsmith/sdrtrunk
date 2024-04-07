@@ -24,6 +24,7 @@ import io.github.dsheirer.controller.channel.Channel;
 import io.github.dsheirer.gui.control.IntegerTextField;
 import io.github.dsheirer.identifier.IdentifierUpdateNotification;
 import io.github.dsheirer.identifier.configuration.FrequencyConfigurationIdentifier;
+import io.github.dsheirer.identifier.patch.PatchGroupManager;
 import io.github.dsheirer.message.StuffBitsMessage;
 import io.github.dsheirer.module.decode.p25.P25TrafficChannelManager;
 import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
@@ -234,10 +235,13 @@ public class P25P2Viewer extends VBox
 
                 //Register to receive events
                 trafficChannelManager.addDecodeEventListener(decodeEvent -> messagePackager.add(decodeEvent));
-                P25P2DecoderState decoderState1 = new P25P2DecoderState(empty, 1, trafficChannelManager);
+                PatchGroupManager patchGroupManager = new PatchGroupManager();
+                P25P2DecoderState decoderState1 = new P25P2DecoderState(empty, 1, trafficChannelManager,
+                        patchGroupManager);
                 decoderState1.setDecoderStateListener(decoderStateEvent -> messagePackager.add(decoderStateEvent));
                 decoderState1.addDecodeEventListener(decodeEvent -> messagePackager.add(decodeEvent));
-                P25P2DecoderState decoderState2 = new P25P2DecoderState(empty, 2, trafficChannelManager);
+                P25P2DecoderState decoderState2 = new P25P2DecoderState(empty, 2, trafficChannelManager,
+                        patchGroupManager);
                 decoderState2.setDecoderStateListener(decoderStateEvent -> messagePackager.add(decoderStateEvent));
                 decoderState2.addDecodeEventListener(decodeEvent -> messagePackager.add(decodeEvent));
                 decoderState1.start();

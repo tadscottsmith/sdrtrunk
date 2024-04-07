@@ -46,6 +46,7 @@ import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.P25DecodeEvent;
 import io.github.dsheirer.module.decode.p25.P25TrafficChannelManager;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
+import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
 import io.github.dsheirer.module.decode.p25.phase2.message.EncryptionSynchronizationSequence;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.IP25ChannelGrantDetailProvider;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.MacMessage;
@@ -133,7 +134,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
     private static final Logger LOGGER = LoggerFactory.getLogger(P25P2DecoderState.class);
     private static final LoggingSuppressor LOGGING_SUPPRESSOR = new LoggingSuppressor(LOGGER);
     private Channel mChannel;
-    private PatchGroupManager mPatchGroupManager = new PatchGroupManager();
+    private PatchGroupManager mPatchGroupManager;
     private P25P2NetworkConfigurationMonitor mNetworkConfigurationMonitor = new P25P2NetworkConfigurationMonitor();
     private P25TrafficChannelManager mTrafficChannelManager;
     private int mEndPttOnFacchCounter = 0;
@@ -144,12 +145,15 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
      * @param channel with configuration details
      * @param timeslot for this decoder state
      * @param trafficChannelManager to coordinate traffic channel activity
+     * @param patchGroupManager instance shared across both timeslots
      */
-    public P25P2DecoderState(Channel channel, int timeslot, P25TrafficChannelManager trafficChannelManager)
+    public P25P2DecoderState(Channel channel, int timeslot, P25TrafficChannelManager trafficChannelManager,
+                             PatchGroupManager patchGroupManager)
     {
         super(timeslot);
         mChannel = channel;
         mTrafficChannelManager = trafficChannelManager;
+        mPatchGroupManager = patchGroupManager;
     }
 
     /**
@@ -189,11 +193,15 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
     @Subscribe
     public void process(PatchGroupPreLoadDataContent preLoadDataContent)
     {
-        for(Identifier identifier : preLoadDataContent.getData().getIdentifiers(Role.TO))
+        //Only do this on timeslot 1 since both timeslots are sharing the same patch group manager.
+        if(getTimeslot() == P25P1Message.TIMESLOT_1)
         {
-            if(identifier instanceof PatchGroupIdentifier patchGroupIdentifier)
+            for(Identifier identifier : preLoadDataContent.getData().getIdentifiers(Role.TO))
             {
-                mPatchGroupManager.addPatchGroup(patchGroupIdentifier);
+                if(identifier instanceof PatchGroupIdentifier patchGroupIdentifier)
+                {
+                    mPatchGroupManager.addPatchGroup(patchGroupIdentifier);
+                }
             }
         }
     }
@@ -269,8 +277,6 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
      */
     private void processMacMessage(MacMessage message)
     {
-        mNetworkConfigurationMonitor.processMacMessage(message);
-
         MacPduType macPduType = message.getMacPduType();
 
         switch(macPduType)

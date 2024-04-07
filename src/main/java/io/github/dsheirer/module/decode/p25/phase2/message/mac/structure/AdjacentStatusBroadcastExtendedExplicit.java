@@ -23,6 +23,7 @@ import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.integer.IntegerIdentifier;
 import io.github.dsheirer.module.decode.p25.identifier.APCO25Lra;
 import io.github.dsheirer.module.decode.p25.identifier.APCO25Rfss;
 import io.github.dsheirer.module.decode.p25.identifier.APCO25Site;
@@ -58,7 +59,7 @@ public class AdjacentStatusBroadcastExtendedExplicit extends MacStructure implem
     private Identifier mLRA;
     private Identifier mSystem;
     private Identifier mRFSS;
-    private Identifier mSite;
+    private IntegerIdentifier mSite;
     private Identifier mWACN;
     private APCO25Channel mChannel;
     private SiteFlags mSiteFlags;
@@ -133,7 +134,7 @@ public class AdjacentStatusBroadcastExtendedExplicit extends MacStructure implem
         return mRFSS;
     }
 
-    public Identifier getSite()
+    public IntegerIdentifier getSite()
     {
         if(mSite == null)
         {

@@ -22,17 +22,18 @@ package io.github.dsheirer.module.decode.p25.phase2;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import io.github.dsheirer.module.decode.DecoderType;
-import io.github.dsheirer.module.decode.config.DecodeConfiguration;
+import io.github.dsheirer.module.decode.p25.phase1.DecodeConfigP25;
 import io.github.dsheirer.module.decode.p25.phase2.enumeration.ScrambleParameters;
 import io.github.dsheirer.module.decode.p25.phase2.message.P25P2Message;
 import io.github.dsheirer.source.tuner.channel.ChannelSpecification;
 
-public class DecodeConfigP25Phase2 extends DecodeConfiguration
+/**
+ * APCO25 Phase 2 decoder configuration
+ */
+public class DecodeConfigP25Phase2 extends DecodeConfigP25
 {
     private ScrambleParameters mScrambleParameters;
     private boolean mAutoDetectScrambleParameters;
-    private boolean mIgnoreDataCalls = false;
-    private int mTrafficChannelPoolSize = TRAFFIC_CHANNEL_LIMIT_DEFAULT;
 
     public DecodeConfigP25Phase2()
     {
@@ -101,43 +102,5 @@ public class DecodeConfigP25Phase2 extends DecodeConfiguration
     public void setAutoDetectScrambleParameters(boolean autoDetect)
     {
         mAutoDetectScrambleParameters = autoDetect;
-    }
-
-    /**
-     * Indicates if the decoder should ignore data calls.
-     */
-    @JacksonXmlProperty(isAttribute = true, localName = "ignore_data_calls")
-    public boolean getIgnoreDataCalls()
-    {
-        return mIgnoreDataCalls;
-    }
-
-    /**
-     * Sets if the decoder should ignore data calls.
-     */
-    public void setIgnoreDataCalls(boolean ignore)
-    {
-        mIgnoreDataCalls = ignore;
-    }
-
-    /**
-     * Traffic channel pool size which is the maximum number of simultaneous traffic channels that can be
-     * allocated by the traffic channel manager.
-     *
-     * This limits the maximum calls so that busy systems won't cause more traffic channels to be allocated than the
-     * decoder/software/host computer can support.
-     */
-    @JacksonXmlProperty(isAttribute = true, localName = "traffic_channel_pool_size")
-    public int getTrafficChannelPoolSize()
-    {
-        return mTrafficChannelPoolSize;
-    }
-
-    /**
-     * Sets the traffic channel pool size.
-     */
-    public void setTrafficChannelPoolSize(int size)
-    {
-        mTrafficChannelPoolSize = size;
     }
 }

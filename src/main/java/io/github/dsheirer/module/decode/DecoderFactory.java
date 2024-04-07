@@ -32,6 +32,7 @@ import io.github.dsheirer.controller.channel.map.ChannelMapModel;
 import io.github.dsheirer.filter.AllPassFilter;
 import io.github.dsheirer.filter.FilterSet;
 import io.github.dsheirer.filter.IFilter;
+import io.github.dsheirer.identifier.patch.PatchGroupManager;
 import io.github.dsheirer.message.IMessage;
 import io.github.dsheirer.message.MessageDirection;
 import io.github.dsheirer.module.Module;
@@ -234,8 +235,9 @@ public class DecoderFactory
             modules.add(p25TrafficChannelManager);
         }
 
-        modules.add(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_1, p25TrafficChannelManager));
-        modules.add(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_2, p25TrafficChannelManager));
+        PatchGroupManager patchGroupManager = new PatchGroupManager();
+        modules.add(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_1, p25TrafficChannelManager, patchGroupManager));
+        modules.add(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_2, p25TrafficChannelManager, patchGroupManager));
         modules.add(new P25P2AudioModule(userPreferences, P25P2Message.TIMESLOT_1, aliasList));
         modules.add(new P25P2AudioModule(userPreferences, P25P2Message.TIMESLOT_2, aliasList));
     }

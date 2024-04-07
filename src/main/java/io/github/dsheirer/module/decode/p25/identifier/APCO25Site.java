@@ -19,7 +19,6 @@
 package io.github.dsheirer.module.decode.p25.identifier;
 
 import io.github.dsheirer.identifier.Form;
-import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.IdentifierClass;
 import io.github.dsheirer.identifier.Role;
 import io.github.dsheirer.identifier.integer.IntegerIdentifier;
@@ -41,7 +40,7 @@ public class APCO25Site extends IntegerIdentifier
     /**
      * Creates a new APCO-25 site identifier
      */
-    public static Identifier create(int site)
+    public static IntegerIdentifier create(int site)
     {
         return new APCO25Site(site);
     }
