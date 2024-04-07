@@ -1447,7 +1447,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     if(!tsbk.getOpcode().name().startsWith("ISP"))
                     {
                         LOGGING_SUPPRESSOR.info(tsbk.getOpcode().name(), 1, "Unrecognized TSBK Opcode: " +
-                                tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber());
+                                tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber() +
+                                " MSG:" + tsbk.getMessage().toHexString());
                     }
                     break;
             }
@@ -2110,7 +2111,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 LOGGING_SUPPRESSOR.info(lcw.getVendor().toString() + lcw.getOpcodeNumber(), 1,
                         "Unrecognized LCW Opcode: " + lcw.getOpcode().name() + " VENDOR:" + lcw.getVendor() +
-                    " OPCODE:" + lcw.getOpcodeNumber());
+                    " OPCODE:" + lcw.getOpcodeNumber() + " MSG:" + lcw.getMessage().toHexString() +
+                                " CHAN:" + getCurrentChannel() + " FREQ:" + getCurrentFrequency());
                 break;
         }
     }

@@ -20,20 +20,44 @@
 package io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp;
 
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
+import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.radio.RadioIdentifier;
+import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
 import io.github.dsheirer.module.decode.p25.phase1.P25P1DataUnitID;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.VendorOSPMessage;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Motorola Unknown Opcode 10
+ * Motorola Unknown Opcode 10.
+ *
+ * This may be a unit paging message.  When it is sent, it's sent over the control as a TSBK message and across the
+ * active traffic channels as a Link Control.
+ *
+ * Examples:
+ * Motorola Opcode 10 LC Detected: 0A9000A100006667DE
+ * Motorola Opcode 10 LC Detected: 0A9000210000666750
+ * Motorola Opcode 10 LC Detected: 0A90002100006667F4
+ * Motorola Opcode 10 LC Detected: 0A900031000066ED45
+ * Motorola Opcode 10 LC Detected: 0A900031000066ED30
+ *
+ * Motorola Opcode 10 TSBK Detected: 0A9000000000A16667DE 8A75
+ * Motorola Opcode 10 TSBK Detected: 0A900000000021666750 270B
+ * Motorola Opcode 10 TSBK Detected: 0A9000000000216667F4 D265
+ * Motorola Opcode 10 TSBK Detected: 0A90000000003166ED45 8A6B
+ * Motorola Opcode 10 TSBK Detected: 0A90000000003166ED30 A459
+ * Motorola Opcode 10 TSBK Detected: 8A90000000003166ED30 406D (same, just LAST BLOCK flag is set in bit 0)
+ *
+ * In both examples, it seems addressed to target radio 0x6667DE, 0x666750, etc.  Unsure of the value 0xA1, 0x21, 0x31,
+ * but it's consistent across both the TSBK and LC messages when addressed to the same radio.
  */
 public class MotorolaOpcode10 extends VendorOSPMessage
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MotorolaOpcode10.class);
+    private static final IntField UNKNOWN = IntField.length8(OCTET_3_BIT_24);
+    private static final IntField TARGET_ADDRESS = IntField.length24(OCTET_6_BIT_48);
+    private RadioIdentifier mTargetAddress;
+    private List<Identifier> mIdentifiers;
 
     /**
      * Constructs a TSBK from the binary message sequence.
@@ -41,20 +65,45 @@ public class MotorolaOpcode10 extends VendorOSPMessage
     public MotorolaOpcode10(P25P1DataUnitID dataUnitId, CorrectedBinaryMessage message, int nac, long timestamp)
     {
         super(dataUnitId, message, nac, timestamp);
-        LOGGER.debug("Motorola Opcode 10 TSBK Detected: " + getMessage().toHexString());
     }
 
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
         sb.append(getMessageStub());
+        sb.append("MOTOROLA UNKNOWN OPCODE 10 TO:").append(getTargetAddress());
+        sb.append(" UNKNOWN:").append(getUnknown());
         sb.append(" MSG:").append(getMessage().toHexString());
         return sb.toString();
+    }
+
+    /**
+     * Target Address
+     */
+    public RadioIdentifier getTargetAddress()
+    {
+        if(mTargetAddress == null)
+        {
+            mTargetAddress = APCO25RadioIdentifier.createTo(getInt(TARGET_ADDRESS));
+        }
+
+        return mTargetAddress;
+    }
+
+    public int getUnknown()
+    {
+        return getInt(UNKNOWN);
     }
 
     @Override
     public List<Identifier> getIdentifiers()
     {
-        return Collections.emptyList();
+        if(mIdentifiers == null)
+        {
+            mIdentifiers = new ArrayList<>();
+            mIdentifiers.add(getTargetAddress());
+        }
+
+        return mIdentifiers;
     }
 }
