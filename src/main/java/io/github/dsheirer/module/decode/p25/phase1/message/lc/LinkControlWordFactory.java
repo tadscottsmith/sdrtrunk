@@ -27,6 +27,8 @@ import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorol
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupAdd;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUser;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaRadioReprogramHeader;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaRadioReprogramRecord;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaTalkComplete;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaUnitGPS;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaUnknownOpcode;
@@ -158,9 +160,9 @@ public class LinkControlWordFactory
             case L3HARRIS_UNKNOWN:
                 return new UnknownLinkControlWord(message);
 
-            case MOTOROLA_PATCH_GROUP_ADD:
+            case MOTOROLA_GROUP_REGROUP_ADD:
                 return new LCMotorolaGroupRegroupAdd(message);
-            case MOTOROLA_PATCH_GROUP_DELETE:
+            case MOTOROLA_GROUP_REGROUP_DELETE:
                 return new LCMotorolaGroupGroupDelete(message);
             case MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_USER:
                 return new LCMotorolaGroupRegroupVoiceChannelUser(message);
@@ -170,6 +172,10 @@ public class LinkControlWordFactory
                 return new LCMotorolaGroupRegroupVoiceChannelUpdate(message);
             case MOTOROLA_UNIT_GPS:
                 return new LCMotorolaUnitGPS(message);
+            case MOTOROLA_RADIO_REPROGRAM_HEADER:
+                return new LCMotorolaRadioReprogramHeader(message);
+            case MOTOROLA_RADIO_REPROGRAM_RECORD:
+                return new LCMotorolaRadioReprogramRecord(message);
             case MOTOROLA_UNKNOWN:
                 return new LCMotorolaUnknownOpcode(message);
 

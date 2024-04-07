@@ -1,23 +1,20 @@
 /*
+ * *****************************************************************************
+ * Copyright (C) 2014-2024 Dennis Sheirer
  *
- *  * ******************************************************************************
- *  * Copyright (C) 2014-2019 Dennis Sheirer
- *  *
- *  * This program is free software: you can redistribute it and/or modify
- *  * it under the terms of the GNU General Public License as published by
- *  * the Free Software Foundation, either version 3 of the License, or
- *  * (at your option) any later version.
- *  *
- *  * This program is distributed in the hope that it will be useful,
- *  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  * GNU General Public License for more details.
- *  *
- *  * You should have received a copy of the GNU General Public License
- *  * along with this program.  If not, see <http://www.gnu.org/licenses/>
- *  * *****************************************************************************
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * ****************************************************************************
  */
 
 package io.github.dsheirer.module.decode.p25.reference;
@@ -32,10 +29,10 @@ public enum Encryption
     BATON_AUTO_ODD(0x41, "BATON AUTO ODD"),
     UNENCRYPTED(0x80, "UNENCRYPTED"),
     DES_OFB(0x81, "DES OFB"),
-    TRIPLE_DES_2_KEY(0x82, "TRIPLE DES 2"),
-    TRIPLE_DES_3_KEY(0x83, "TRIPLE DES 3"),
+    TRIPLE_DES_2_KEY(0x82, "2-KEY TRIPLE DES"),
+    TRIPLE_DES_3_KEY(0x83, "3-KEY TRIPLE DES"),
     AES_256(0x84, "AES-256"),
-    AES_CBC(0x85, "AES-CBC"),
+    AES_128(0x85, "AES-128"),
     DES_XL(0x9F, "DES-XL"), /* Motorola Proprietary */
     DVI_XL(0xA0, "DVI-XL"), /* Motorola Proprietary */
     DVP_XL(0xA1, "DVP-XL"), /* Motorola Proprietary */
@@ -84,7 +81,7 @@ public enum Encryption
             case 0x84:
                 return AES_256;
             case 0x85:
-                return AES_CBC;
+                return AES_128;
             case 0x9F:
                 return DES_XL;
             case 0xA0:

@@ -53,7 +53,7 @@ public class LCMotorolaGroupRegroupAdd extends LinkControlWord
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append("MOTOROLA GROUP REGROUP SUPERGROUP:").append(getPatchGroup());
+        sb.append("MOTOROLA GROUP REGROUP ADD SUPERGROUP:").append(getPatchGroup());
         return sb.toString();
     }
 

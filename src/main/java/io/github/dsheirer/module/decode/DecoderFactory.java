@@ -223,8 +223,16 @@ public class DecoderFactory
         {
             p25TrafficChannelManager = p25;
         }
+        else
+        {
+            p25TrafficChannelManager = new P25TrafficChannelManager(channel);
+        }
 
-        modules.add(p25TrafficChannelManager);
+        //Only add traffic channel manager to the modules if this is the control channel
+        if(channel.isStandardChannel())
+        {
+            modules.add(p25TrafficChannelManager);
+        }
 
         modules.add(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_1, p25TrafficChannelManager));
         modules.add(new P25P2DecoderState(channel, P25P2Message.TIMESLOT_2, p25TrafficChannelManager));

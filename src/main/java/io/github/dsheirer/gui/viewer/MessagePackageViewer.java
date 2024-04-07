@@ -20,17 +20,12 @@
 package io.github.dsheirer.gui.viewer;
 
 import io.github.dsheirer.channel.state.DecoderStateEvent;
-import io.github.dsheirer.module.decode.event.DecodeEvent;
 import io.github.dsheirer.module.decode.event.DecodeEventSnapshot;
-import io.github.dsheirer.module.decode.event.IDecodeEvent;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -87,7 +82,12 @@ public class MessagePackageViewer extends VBox
 
         if(messagePackage != null)
         {
-            getMessageLabel().setText(messagePackage.toString());
+            String message = messagePackage.toString();
+            if(message.length() > 40)
+            {
+                message = message.substring(0, 40) + "...";
+            }
+            getMessageLabel().setText(message);
             getDecoderStateEventTableView().getItems().addAll(messagePackage.getDecoderStateEvents());
             getDecodeEventTableView().getItems().addAll(messagePackage.getDecodeEvents());
             getChannelStartProcessingRequestViewer().set(messagePackage.getChannelStartProcessingRequest());

@@ -42,8 +42,8 @@ public class LCGroupVoiceChannelUpdate extends LinkControlWord implements IFrequ
     private static final IntField CHANNEL_B = IntField.length12(OCTET_5_BIT_40 + 4);
     private static final IntField GROUP_ADDRESS_B = IntField.length16(OCTET_7_BIT_56);
 
-    private IChannelDescriptor mChannelA;
-    private IChannelDescriptor mChannelB;
+    private APCO25Channel mChannelA;
+    private APCO25Channel mChannelB;
     private Identifier mTalkgroupA;
     private Identifier mTalkgroupB;
     private List<Identifier> mIdentifiers;
@@ -89,7 +89,7 @@ public class LCGroupVoiceChannelUpdate extends LinkControlWord implements IFrequ
         return mIdentifiers;
     }
 
-    public IChannelDescriptor getChannelA()
+    public APCO25Channel getChannelA()
     {
         if(mChannelA == null)
         {
@@ -99,7 +99,7 @@ public class LCGroupVoiceChannelUpdate extends LinkControlWord implements IFrequ
         return mChannelA;
     }
 
-    public IChannelDescriptor getChannelB()
+    public APCO25Channel getChannelB()
     {
         if(mChannelB == null)
         {

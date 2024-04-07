@@ -196,11 +196,7 @@ public class LDU1Message extends LDUMessage implements IFrequencyBandReceiver
         }
 
         mLinkControlWord = LinkControlWordFactory.create(binaryMessage);
-
-        if(irrecoverableErrors)
-        {
-            mLinkControlWord.setValid(false);
-        }
+        mLinkControlWord.setValid(!irrecoverableErrors);
 
         //If we corrected any bit errors, update the original message with the bit error count
         for(int x = 0; x < 23; x++)

@@ -23,6 +23,7 @@ import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25ExplicitChannel;
 import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
@@ -41,7 +42,7 @@ public class LCGroupVoiceChannelUpdateExplicit extends VoiceLinkControlMessage i
     private static final IntField DOWNLINK_CHANNEL = IntField.length12(OCTET_5_BIT_40 + 4);
     private static final IntField UPLINK_FREQUENCY_BAND = IntField.length4(OCTET_7_BIT_56);
     private static final IntField UPLINK_CHANNEL = IntField.length12(OCTET_7_BIT_56 + 4);
-    private IChannelDescriptor mChannel;
+    private APCO25Channel mChannel;
     private Identifier mTalkgroup;
     private List<Identifier> mIdentifiers;
 
@@ -76,7 +77,7 @@ public class LCGroupVoiceChannelUpdateExplicit extends VoiceLinkControlMessage i
         return mIdentifiers;
     }
 
-    public IChannelDescriptor getChannel()
+    public APCO25Channel getChannel()
     {
         if(mChannel == null)
         {

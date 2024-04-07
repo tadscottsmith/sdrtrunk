@@ -147,17 +147,24 @@ public class P25Channel implements IChannelDescriptor
     }
 
     /**
-     * Timeslot for a TDMA channel
-     * @return timeslot or 0 if the channel is not a TDMA channel
+     * Timeslot for a TDMA channel, 1 or 2
+     *
+     * Note: the ICD uses Logical Channel 0 (LCH 0) and Logical Channel 1 (LCH 1) but we refer to them as TS1 and TS2
+     * so that timeslot 0 can be used for non timeslot signalling like Sync Loss messages.
+     *
+     * @return timeslot or 1 if the channel is not a TDMA channel
      */
     public int getTimeslot()
     {
         if(isTDMAChannel())
         {
-            return getDownlinkChannelNumber() % getTimeslotCount() + 1;
+            if(getDownlinkChannelNumber() % getTimeslotCount() == 1)
+            {
+                return 2;
+            }
         }
 
-        return 0;
+        return 1;
     }
 
     /**

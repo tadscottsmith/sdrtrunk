@@ -60,7 +60,7 @@ public class ExtendedFunctionCommandAbbreviated extends MacStructure
         sb.append(getOpcode());
         sb.append(" TO:").append(getTargetAddress());
         sb.append(" FUNCTION:").append(getExtendedFunction());
-        sb.append(" ARGUMENTS:").append(getArguments());
+        sb.append(getArguments());
         return sb.toString();
     }
 

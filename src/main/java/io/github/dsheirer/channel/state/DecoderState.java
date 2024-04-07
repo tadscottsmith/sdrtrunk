@@ -27,8 +27,6 @@ import io.github.dsheirer.identifier.configuration.ChannelDescriptorConfiguratio
 import io.github.dsheirer.identifier.configuration.DecoderTypeConfigurationIdentifier;
 import io.github.dsheirer.identifier.configuration.FrequencyConfigurationIdentifier;
 import io.github.dsheirer.sample.Listener;
-import io.github.dsheirer.source.ISourceEventListener;
-import io.github.dsheirer.source.SourceEvent;
 
 /**
  * Channel state monitors the stream of decoded messages produced by the
@@ -36,11 +34,10 @@ import io.github.dsheirer.source.SourceEvent;
  *
  * Provides access to a textual activity summary of events observed.
  */
-public abstract class DecoderState extends AbstractDecoderState implements ISourceEventListener
+public abstract class DecoderState extends AbstractDecoderState
 {
     private MutableIdentifierCollection mIdentifierCollection;
     protected Listener<IdentifierUpdateNotification> mConfigurationIdentifierListener;
-    private Listener<SourceEvent> mSourceEventListener = new SourceEventListener();
     protected IChannelDescriptor mCurrentChannel;
     private long mCurrentFrequency;
 
@@ -69,15 +66,6 @@ public abstract class DecoderState extends AbstractDecoderState implements ISour
         super.start();
         //Broadcast the existing identifiers (as add events) so that they can be received by external listeners
         mIdentifierCollection.broadcastIdentifiers();
-    }
-
-    /**
-     * Source event listener to receive notification of the current frequency.
-     */
-    @Override
-    public Listener<SourceEvent> getSourceEventListener()
-    {
-        return mSourceEventListener;
     }
 
     /**
@@ -197,25 +185,7 @@ public abstract class DecoderState extends AbstractDecoderState implements ISour
             }
             else if(identifierUpdateNotification.getIdentifier() instanceof FrequencyConfigurationIdentifier fci)
             {
-                System.out.println("Setting current frequency to: " + mCurrentFrequency);
-                mCurrentFrequency = fci.getValue();
-            }
-        }
-    }
-
-    /**
-     * Listener to receive source events, specifically the current frequency value.
-     */
-    public class SourceEventListener implements Listener<SourceEvent>
-    {
-        @Override
-        public void receive(SourceEvent sourceEvent)
-        {
-            switch(sourceEvent.getEvent())
-            {
-                case NOTIFICATION_FREQUENCY_CHANGE:
-                    mCurrentFrequency = sourceEvent.getValue().longValue();
-                    break;
+                setCurrentFrequency(fci.getValue());
             }
         }
     }

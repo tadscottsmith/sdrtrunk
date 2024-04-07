@@ -25,12 +25,10 @@ import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
-import io.github.dsheirer.module.decode.p25.identifier.channel.P25P2Channel;
 import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.reference.ServiceOptions;
 import io.github.dsheirer.module.decode.p25.reference.VoiceServiceOptions;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -104,7 +102,7 @@ public class GroupVoiceChannelGrantUpdateImplicit extends MacStructure implement
     {
         if(mChannel1 == null)
         {
-            mChannel1 = new APCO25Channel(new P25P2Channel(getInt(FREQUENCY_BAND_1), getInt(CHANNEL_NUMBER_1)));
+            mChannel1 = APCO25Channel.create(getInt(FREQUENCY_BAND_1), getInt(CHANNEL_NUMBER_1));
         }
 
         return mChannel1;
@@ -114,7 +112,7 @@ public class GroupVoiceChannelGrantUpdateImplicit extends MacStructure implement
     {
         if(mChannel2 == null)
         {
-            mChannel2 = new APCO25Channel(new P25P2Channel(getInt(FREQUENCY_BAND_2), getInt(CHANNEL_NUMBER_2)));
+            mChannel2 = APCO25Channel.create(getInt(FREQUENCY_BAND_2), getInt(CHANNEL_NUMBER_2));
         }
 
         return mChannel2;

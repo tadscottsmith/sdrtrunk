@@ -46,6 +46,21 @@ public abstract class FullyQualifiedTalkgroupIdentifier extends TalkgroupIdentif
         mTalkgroup = id;
     }
 
+    public int getWacn()
+    {
+        return mWacn;
+    }
+
+    public int getSystem()
+    {
+        return mSystem;
+    }
+
+    public int getTalkgroup()
+    {
+        return mTalkgroup;
+    }
+
     /**
      * Fully qualified talkgroup identity.
      * @return talkgroup identity

@@ -26,6 +26,7 @@ import io.github.dsheirer.identifier.IdentifierUpdateNotification;
 import io.github.dsheirer.identifier.configuration.FrequencyConfigurationIdentifier;
 import io.github.dsheirer.message.StuffBitsMessage;
 import io.github.dsheirer.module.decode.p25.P25TrafficChannelManager;
+import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
 import io.github.dsheirer.module.decode.p25.phase2.DecodeConfigP25Phase2;
 import io.github.dsheirer.module.decode.p25.phase2.P25P2DecoderState;
 import io.github.dsheirer.module.decode.p25.phase2.P25P2MessageFramer;
@@ -43,7 +44,6 @@ import java.util.function.Predicate;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.SimpleStringProperty;
@@ -74,7 +74,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.Callback;
-import org.apache.commons.math3.exception.util.ExceptionContextProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -248,12 +247,12 @@ public class P25P2Viewer extends VBox
 
                 if(frequency > 0)
                 {
+                    trafficChannelManager.setCurrentControlFrequency(frequency, empty);
                     FrequencyConfigurationIdentifier id = FrequencyConfigurationIdentifier.create(frequency);
-                    IdentifierUpdateNotification update1 = new IdentifierUpdateNotification(id, IdentifierUpdateNotification.Operation.ADD, 1);
-                    IdentifierUpdateNotification update2 = new IdentifierUpdateNotification(id, IdentifierUpdateNotification.Operation.ADD, 2);
-
-                    decoderState1.getConfigurationIdentifierListener().receive(update1);
-                    decoderState2.getConfigurationIdentifierListener().receive(update2);
+                    decoderState1.getConfigurationIdentifierListener().receive(new IdentifierUpdateNotification(id,
+                            IdentifierUpdateNotification.Operation.ADD, 1));
+                    decoderState2.getConfigurationIdentifierListener().receive(new IdentifierUpdateNotification(id,
+                            IdentifierUpdateNotification.Operation.ADD, 2));
                 }
 
                 messageProcessor.setMessageListener(message -> {
@@ -261,11 +260,11 @@ public class P25P2Viewer extends VBox
                     {
                         //Add the initial message to the packager so that it can be combined with any decoder state events.
                         messagePackager.add(message);
-                        if(message.getTimeslot() == 1)
+                        if(message.getTimeslot() == P25P1Message.TIMESLOT_1)
                         {
                             decoderState1.receive(message);
                         }
-                        else if(message.getTimeslot() == 2)
+                        else if(message.getTimeslot() == P25P1Message.TIMESLOT_2)
                         {
                             decoderState2.receive(message);
                         }

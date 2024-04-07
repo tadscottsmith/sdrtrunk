@@ -29,9 +29,6 @@ import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.VoiceLinkControlMessage;
-import io.github.dsheirer.module.decode.p25.reference.ServiceOptions;
-import io.github.dsheirer.module.decode.p25.reference.VoiceServiceOptions;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -44,7 +41,7 @@ public class LCMotorolaGroupRegroupVoiceChannelUpdate extends VoiceLinkControlMe
     private static final IntField FREQUENCY_BAND = IntField.length4(OCTET_7_BIT_56);
     private static final IntField CHANNEL_NUMBER = IntField.length12(OCTET_7_BIT_56 + 4);
     private APCO25PatchGroup mSupergroupAddress;
-    private IChannelDescriptor mChannel;
+    private APCO25Channel mChannel;
     private List<Identifier> mIdentifiers;
 
     /**
@@ -77,7 +74,7 @@ public class LCMotorolaGroupRegroupVoiceChannelUpdate extends VoiceLinkControlMe
         return mSupergroupAddress;
     }
 
-    public IChannelDescriptor getChannel()
+    public APCO25Channel getChannel()
     {
         if(mChannel == null)
         {

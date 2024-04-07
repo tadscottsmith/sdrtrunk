@@ -22,6 +22,7 @@ package io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.radio.RadioIdentifier;
+import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25ExplicitChannel;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25FullyQualifiedRadioIdentifier;
@@ -34,7 +35,7 @@ import io.github.dsheirer.module.decode.p25.reference.DataServiceOptions;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AMBTCIndividualDataChannelGrant extends AMBTCMessage implements IFrequencyBandReceiver
+public class AMBTCIndividualDataChannelGrant extends AMBTCMessage implements IFrequencyBandReceiver, IServiceOptionsProvider
 {
     private static final int[] HEADER_SERVICE_OPTIONS = {64, 65, 66, 67, 68, 69, 70, 71};
     private static final int[] HEADER_RESERVED = {72, 73, 74, 75, 76, 77, 78, 79};
@@ -70,11 +71,11 @@ public class AMBTCIndividualDataChannelGrant extends AMBTCMessage implements IFr
             sb.append(" FM:").append(getSourceAddress());
         }
         sb.append(" TO:").append(getTargetAddress());
-        sb.append(" SERVICE OPTIONS:").append(getDataServiceOptions());
+        sb.append(" SERVICE OPTIONS:").append(getServiceOptions());
         return sb.toString();
     }
 
-    public DataServiceOptions getDataServiceOptions()
+    public DataServiceOptions getServiceOptions()
     {
         if(mDataServiceOptions == null)
         {

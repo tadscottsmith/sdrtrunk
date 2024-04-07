@@ -38,7 +38,7 @@ import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCSt
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCStatusQueryResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCStatusUpdateRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitAcknowledgeResponse;
-import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitToUnitVoiceServiceAnswerResponse;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitToUnitAnswerResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitToUnitVoiceServiceRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCAdjacentStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCCallAlert;
@@ -48,7 +48,7 @@ import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCGr
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCGroupVoiceChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCIndividualDataChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMessageUpdate;
-import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMotorolaGroupRegroupChannelGrantExplicit;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMotorolaGroupRegroupChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCNetworkStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCProtectionParameterBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCRFSSStatusBroadcast;
@@ -231,7 +231,7 @@ public class PDUMessageFactory
             case ISP_UNIT_TO_UNIT_VOICE_SERVICE_REQUEST:
                 return new AMBTCUnitToUnitVoiceServiceRequest(pduSequence, nac, timestamp);
             case ISP_UNIT_TO_UNIT_ANSWER_RESPONSE:
-                return new AMBTCUnitToUnitVoiceServiceAnswerResponse(pduSequence, nac, timestamp);
+                return new AMBTCUnitToUnitAnswerResponse(pduSequence, nac, timestamp);
 
             case OSP_ADJACENT_STATUS_BROADCAST:
                 return new AMBTCAdjacentStatusBroadcast(pduSequence, nac, timestamp);
@@ -276,7 +276,7 @@ public class PDUMessageFactory
             case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE:
                 return new AMBTCUnitToUnitVoiceServiceChannelGrantUpdate(pduSequence, nac, timestamp);
             case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_GRANT:
-                return new AMBTCMotorolaGroupRegroupChannelGrantExplicit(pduSequence, nac, timestamp);
+                return new AMBTCMotorolaGroupRegroupChannelGrant(pduSequence, nac, timestamp);
             default:
                 return new PDUSequenceMessage(pduSequence, nac, timestamp);
         }

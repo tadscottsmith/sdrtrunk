@@ -120,9 +120,9 @@ import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnitToU
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnitToUnitVoiceServiceChannelGrantExtendedVCH;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnknownMacStructure;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnknownVendorMessage;
-import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisGpsLocation;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisGroupRegroupExplicitEncryptionCommand;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisTalkerAlias;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisTalkerGpsLocation;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisUnknownOpcode129;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisUnknownOpcode143;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.UnknownOpcode136;
@@ -562,7 +562,7 @@ public class MacMessageFactory
             case L3HARRIS_8F_UNKNOWN_OPCODE_143:
                 return new L3HarrisUnknownOpcode143(message, offset);
             case L3HARRIS_AA_GPS_LOCATION:
-                return new L3HarrisGpsLocation(message, offset);
+                return new L3HarrisTalkerGpsLocation(message, offset);
             case L3HARRIS_A8_TALKER_ALIAS:
                 return new L3HarrisTalkerAlias(message, offset);
             case L3HARRIS_B0_GROUP_REGROUP_EXPLICIT_ENCRYPTION_COMMAND:
@@ -574,7 +574,7 @@ public class MacMessageFactory
                 return new MotorolaGroupRegroupAddCommand(message, offset);
             case MOTOROLA_83_GROUP_REGROUP_VOICE_CHANNEL_UPDATE:
                 return new MotorolaGroupRegroupVoiceChannelUpdate(message, offset);
-            case MOTOROLA_84_EXTENDED_FUNCTION_COMMAND:
+            case MOTOROLA_84_GROUP_REGROUP_EXTENDED_FUNCTION_COMMAND:
                 return new MotorolaGroupRegroupExtendedFunctionCommand(message, offset);
             case MOTOROLA_89_GROUP_REGROUP_DELETE:
                 return new MotorolaGroupRegroupDeleteCommand(message, offset);

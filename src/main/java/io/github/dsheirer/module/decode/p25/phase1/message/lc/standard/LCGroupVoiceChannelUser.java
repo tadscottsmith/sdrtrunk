@@ -86,6 +86,14 @@ public class LCGroupVoiceChannelUser extends VoiceLinkControlMessage
     }
 
     /**
+     * Indicates if the source address is valid and non-zero
+     */
+    public boolean hasSourceAddress()
+    {
+        return getInt(SOURCE_ADDRESS) > 0;
+    }
+
+    /**
      * List of identifiers contained in this message
      */
     @Override
@@ -95,7 +103,10 @@ public class LCGroupVoiceChannelUser extends VoiceLinkControlMessage
         {
             mIdentifiers = new ArrayList<>();
             mIdentifiers.add(getGroupAddress());
-            mIdentifiers.add(getSourceAddress());
+            if(hasSourceAddress())
+            {
+                mIdentifiers.add(getSourceAddress());
+            }
         }
 
         return mIdentifiers;

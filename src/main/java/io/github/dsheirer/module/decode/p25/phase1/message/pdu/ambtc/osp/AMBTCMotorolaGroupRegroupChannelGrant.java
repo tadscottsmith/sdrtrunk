@@ -38,7 +38,7 @@ import java.util.List;
 /**
  * Motorola group regroup channel grant - explicit channel format
  */
-public class AMBTCMotorolaGroupRegroupChannelGrantExplicit extends AMBTCMessage implements IFrequencyBandReceiver, IServiceOptionsProvider
+public class AMBTCMotorolaGroupRegroupChannelGrant extends AMBTCMessage implements IFrequencyBandReceiver, IServiceOptionsProvider
 {
     private static final IntField HEADER_SERVICE_OPTIONS = IntField.length8(OCTET_8_BIT_64);
     private static final IntField BLOCK_0_DOWNLINK_FREQUENCY_BAND = IntField.length4(OCTET_0_BIT_0);
@@ -60,7 +60,7 @@ public class AMBTCMotorolaGroupRegroupChannelGrantExplicit extends AMBTCMessage 
      * @param nac code
      * @param timestamp for the sequence
      */
-    public AMBTCMotorolaGroupRegroupChannelGrantExplicit(PDUSequence PDUSequence, int nac, long timestamp)
+    public AMBTCMotorolaGroupRegroupChannelGrant(PDUSequence PDUSequence, int nac, long timestamp)
     {
         super(PDUSequence, nac, timestamp);
     }

@@ -1,6 +1,6 @@
 /*
  * *****************************************************************************
- * Copyright (C) 2014-2023 Dennis Sheirer
+ * Copyright (C) 2014-2024 Dennis Sheirer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,9 +63,12 @@ public class PatchGroupManager
      * existing patch group is discarded and replaced with the updated version of the patch group.
      *
      * @param patchGroupIdentifier to add or update
+     * @return true if the group was added or updated
      */
-    public synchronized void addPatchGroup(PatchGroupIdentifier patchGroupIdentifier)
+    public synchronized boolean addPatchGroup(PatchGroupIdentifier patchGroupIdentifier)
     {
+        boolean added = false;
+
         PatchGroup update = patchGroupIdentifier.getValue();
 
         if(update.getPatchGroup().getValue() > 0)
@@ -77,20 +80,24 @@ public class PatchGroupManager
                 //If the patch group version number is the same, this is an update
                 if(existingPatchGroup.getVersion() == update.getVersion())
                 {
-                    existingPatchGroup.addPatchedTalkgroups(update.getPatchedTalkgroupIdentifiers());
-                    existingPatchGroup.addPatchedRadios(update.getPatchedRadioIdentifiers());
+                    added |= existingPatchGroup.addPatchedTalkgroups(update.getPatchedTalkgroupIdentifiers());
+                    added |= existingPatchGroup.addPatchedRadios(update.getPatchedRadioIdentifiers());
                 }
                 //Otherwise, this is a replace operation.
                 else
                 {
                     mPatchGroupMap.put(update.getPatchGroup().getValue(), patchGroupIdentifier);
+                    added = true;
                 }
             }
             else
             {
                 mPatchGroupMap.put(update.getPatchGroup().getValue(), patchGroupIdentifier);
+                added = true;
             }
         }
+
+        return added;
     }
 
     /**
@@ -111,11 +118,12 @@ public class PatchGroupManager
      * Removes the patch group from this manager if it is currently being managed.
      *
      * @param patchGroupIdentifier to remove
+     * @return true if the patch group was removed.
      */
-    public synchronized void removePatchGroup(PatchGroupIdentifier patchGroupIdentifier)
+    public synchronized boolean removePatchGroup(PatchGroupIdentifier patchGroupIdentifier)
     {
         int id = patchGroupIdentifier.getValue().getPatchGroup().getValue();
-        mPatchGroupMap.remove(id);
+        return mPatchGroupMap.remove(id) != null;
     }
 
     /**

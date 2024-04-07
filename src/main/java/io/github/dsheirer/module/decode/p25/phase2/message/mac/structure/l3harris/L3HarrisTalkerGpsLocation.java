@@ -37,7 +37,7 @@ import org.jdesktop.swingx.mapviewer.GeoPosition;
  *
  * Bit field definitions are best-guess from observed samples.
  */
-public class L3HarrisGpsLocation extends MacStructureVendor
+public class L3HarrisTalkerGpsLocation extends MacStructureVendor
 {
     public static final SimpleDateFormat SDF = new SimpleDateFormat("HH:mm:ss");
     static {
@@ -69,8 +69,8 @@ public class L3HarrisGpsLocation extends MacStructureVendor
     private static final IntField U4 = IntField.length8(OCTET_17_BIT_128);
 
     private P25Location mLocation;
-    private List<Identifier> mIdentifiers;
     private GeoPosition mGeoPosition;
+    private List<Identifier> mIdentifiers;
 
     /**
      * Constructs the message
@@ -78,9 +78,30 @@ public class L3HarrisGpsLocation extends MacStructureVendor
      * @param message containing the message bits
      * @param offset into the message for this structure
      */
-    public L3HarrisGpsLocation(CorrectedBinaryMessage message, int offset)
+    public L3HarrisTalkerGpsLocation(CorrectedBinaryMessage message, int offset)
     {
         super(message, offset);
+    }
+
+    /**
+     * Textual representation of this message
+     */
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+
+        if(getVendor() == Vendor.HARRIS)
+        {
+            sb.append("L3H TALKER GPS ");
+        }
+        else
+        {
+            sb.append("VENDOR:").append(getVendor()).append(" TALKER GPS ");
+        }
+
+        sb.append(GPS_FORMAT.format(getLatitude())).append(" ").append(GPS_FORMAT.format(getLongitude()));
+        sb.append(" TIME:").append(SDF.format(getTimestampMs()));
+        return sb.toString();
     }
 
     /**
@@ -90,6 +111,11 @@ public class L3HarrisGpsLocation extends MacStructureVendor
     public long getTimestampMs()
     {
         return getInt(GPS_TIME) * 1000; //Convert seconds to milliseconds.
+    }
+
+    public String getTimeFormatted()
+    {
+        return SDF.format(getTimestampMs());
     }
 
     /**
@@ -170,27 +196,6 @@ public class L3HarrisGpsLocation extends MacStructureVendor
         return getInt(LONGITUDE_MINUTES) + getInt(LONGITUDE_MINUTES_FRACTIONAL) / 5000d;
     }
 
-    /**
-     * Textual representation of this message
-     */
-    public String toString()
-    {
-        StringBuilder sb = new StringBuilder();
-
-        if(getVendor() == Vendor.HARRIS)
-        {
-            sb.append("L3H TALKER GPS ");
-        }
-        else
-        {
-            sb.append("VENDOR:").append(getVendor()).append(" TALKER GPS ");
-        }
-
-        sb.append(GPS_FORMAT.format(getLatitude())).append(" ").append(GPS_FORMAT.format(getLongitude()));
-        sb.append(" TIME:").append(SDF.format(getTimestampMs()));
-        return sb.toString();
-    }
-
     @Override
     public List<Identifier> getIdentifiers()
     {
@@ -269,7 +274,7 @@ public class L3HarrisGpsLocation extends MacStructureVendor
         for(String example: examples)
         {
             CorrectedBinaryMessage cbm = new CorrectedBinaryMessage(CorrectedBinaryMessage.loadHex(example));
-            L3HarrisGpsLocation gps = new L3HarrisGpsLocation(cbm, 16);
+            L3HarrisTalkerGpsLocation gps = new L3HarrisTalkerGpsLocation(cbm, 16);
             System.out.println(gps);
         }
     }

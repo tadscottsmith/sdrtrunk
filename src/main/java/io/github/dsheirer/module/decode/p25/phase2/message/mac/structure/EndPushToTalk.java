@@ -20,6 +20,7 @@
 package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure;
 
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
+import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.module.decode.p25.identifier.APCO25Nac;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
@@ -36,10 +37,9 @@ import java.util.List;
 public class EndPushToTalk extends MacStructure
 {
     private static final int SYSTEM_CONTROLLER = 16777215;
-    private static int[] COLOR_CODE = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
-    private static int[] SOURCE_ADDRESS = {104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
-        119, 120, 121, 122, 123, 124, 125, 126, 127};
-    private static int[] GROUP_ADDRESS = {128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143};
+    private static final IntField COLOR_CODE = IntField.length12(OCTET_2_BIT_8 + 4);
+    private static final IntField SOURCE_ADDRESS = IntField.length24(OCTET_14_BIT_104);
+    private static final IntField GROUP_ADDRESS = IntField.length16(OCTET_17_BIT_128);
 
     private Identifier mColorCode;
     private Identifier mSourceAddress;
@@ -82,7 +82,7 @@ public class EndPushToTalk extends MacStructure
     {
         if(mColorCode == null)
         {
-            mColorCode = APCO25Nac.create(getMessage().getInt(COLOR_CODE, getOffset()));
+            mColorCode = APCO25Nac.create(getInt(COLOR_CODE));
         }
 
         return mColorCode;
@@ -95,7 +95,7 @@ public class EndPushToTalk extends MacStructure
     {
         if(mSourceAddress == null)
         {
-            mSourceAddress = APCO25RadioIdentifier.createFrom(getMessage().getInt(SOURCE_ADDRESS, getOffset()));
+            mSourceAddress = APCO25RadioIdentifier.createFrom(getInt(SOURCE_ADDRESS));
         }
 
         return mSourceAddress;
@@ -108,7 +108,7 @@ public class EndPushToTalk extends MacStructure
     {
         if(mGroupAddress == null)
         {
-            mGroupAddress = APCO25Talkgroup.create(getMessage().getInt(GROUP_ADDRESS, getOffset()));
+            mGroupAddress = APCO25Talkgroup.create(getInt(GROUP_ADDRESS));
         }
 
         return mGroupAddress;

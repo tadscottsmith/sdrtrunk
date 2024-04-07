@@ -94,10 +94,12 @@ public enum LinkControlOpcode
 
     MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_USER("MOTOROLA GROUP REGROUP VOICE CHANNEL USER", 0),
     MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_UPDATE("MOTOROLA GROUP REGROUP VOICE CHANNEL UPDATE", 1),
-    MOTOROLA_PATCH_GROUP_ADD("PATCH GROUP ADD", 3),
-    MOTOROLA_PATCH_GROUP_DELETE("PATCH GROUP DELETE", 4),
+    MOTOROLA_GROUP_REGROUP_ADD("MOTOROLA GROUP REGROUP ADD", 3),
+    MOTOROLA_GROUP_REGROUP_DELETE("MOTOROLA GROUP REGROUP DELETE", 4),
     MOTOROLA_UNIT_GPS("UNIT GPS", 6),
     MOTOROLA_TALK_COMPLETE("TALK_COMPLETE", 15),
+    MOTOROLA_RADIO_REPROGRAM_HEADER("MOTOROLA RADIO REPROGRAM HEADER", 21),
+    MOTOROLA_RADIO_REPROGRAM_RECORD("MOTOROLA RADIO REPROGRAM CONTINUATION", 23),
     MOTOROLA_UNKNOWN("MOTOROLA UNKNOWN", -1),
 
     L3HARRIS_UNKNOWN_0A("UNKNOWN OPCODE 10", 10),
@@ -221,13 +223,17 @@ public enum LinkControlOpcode
                     case 1:
                         return MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_UPDATE;
                     case 3:
-                        return MOTOROLA_PATCH_GROUP_ADD;
+                        return MOTOROLA_GROUP_REGROUP_ADD;
                     case 4:
-                        return MOTOROLA_PATCH_GROUP_DELETE;
+                        return MOTOROLA_GROUP_REGROUP_DELETE;
                     case 6:
                         return MOTOROLA_UNIT_GPS;
                     case 15:
                         return MOTOROLA_TALK_COMPLETE;
+                    case 21:
+                        return MOTOROLA_RADIO_REPROGRAM_HEADER;
+                    case 23:
+                        return MOTOROLA_RADIO_REPROGRAM_RECORD;
                     default:
                         return MOTOROLA_UNKNOWN;
                 }

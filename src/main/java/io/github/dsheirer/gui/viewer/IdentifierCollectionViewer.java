@@ -21,12 +21,10 @@ package io.github.dsheirer.gui.viewer;
 
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.IdentifierCollection;
-import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
@@ -70,7 +68,7 @@ public class IdentifierCollectionViewer extends VBox
             classColumn.setCellValueFactory(new PropertyValueFactory<>("identifierClass"));
 
             TableColumn formColumn = new TableColumn();
-            formColumn.setPrefWidth(110);
+            formColumn.setPrefWidth(160);
             formColumn.setText("Form");
             formColumn.setCellValueFactory(new PropertyValueFactory<>("form"));
 
@@ -80,7 +78,7 @@ public class IdentifierCollectionViewer extends VBox
             roleColumn.setCellValueFactory(new PropertyValueFactory<>("role"));
 
             TableColumn valueColumn = new TableColumn();
-            valueColumn.setPrefWidth(110);
+            valueColumn.setPrefWidth(160);
             valueColumn.setText("Value");
             valueColumn.setCellValueFactory(new PropertyValueFactory<>("value"));
 

@@ -53,7 +53,7 @@ public class LCMotorolaGroupGroupDelete extends LinkControlWord
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append("MOTOROLA DELETE PATCH GROUP:").append(getSuperGroup());
+        sb.append("MOTOROLA GROUP REGROUP DELETE SUPERGROUP:").append(getSuperGroup());
         return sb.toString();
     }
 

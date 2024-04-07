@@ -161,11 +161,7 @@ public class TDULinkControlMessage extends P25P1Message implements IFrequencyBan
         }
 
         mLinkControlWord = LinkControlWordFactory.create(binaryMessage);
-
-        if(irrecoverableErrors)
-        {
-            mLinkControlWord.setValid(false);
-        }
+        mLinkControlWord.setValid(!irrecoverableErrors);
 
         //If we corrected any bit errors, update the original message with the bit error count
         for(int x = 0; x < 23; x++)

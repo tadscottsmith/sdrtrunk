@@ -357,7 +357,6 @@ public class P25P2AudioModule extends AmbeAudioModule implements IdentifierUpdat
         {
             if(event.getTimeslot() == getTimeslot())
             {
-                mLog.info("********************** P25P2 Audio Module Received Squelch Event: " + event);
                 if(event.getSquelchState() == SquelchState.SQUELCH)
                 {
                     closeAudioSegment();

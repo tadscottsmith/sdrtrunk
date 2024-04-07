@@ -21,6 +21,7 @@ package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure;
 
 import io.github.dsheirer.audio.codec.mbe.IEncryptionSyncParameters;
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
+import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.encryption.EncryptionKeyIdentifier;
 import io.github.dsheirer.module.decode.p25.audio.Phase2EncryptionSyncParameters;
@@ -32,19 +33,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Call start.
- *
- * Similar to a P25 Phase 1 Header Data Unit (HDU).
+ * Push-To-Talk, Call start.
  */
 public class PushToTalk extends MacStructure
 {
     private static int MESSAGE_INDICATOR_START = 8;
     private static int MESSAGE_INDICATOR_END = 79;
-    private static int[] ALGORITHM_ID = {80, 81, 82, 83, 84, 85, 86, 87};
-    private static int[] KEY_ID = {88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103};
-    private static int[] SOURCE_ADDRESS = {104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
-        119, 120, 121, 122, 123, 124, 125, 126, 127};
-    private static int[] GROUP_ADDRESS = {128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143};
+    private static final IntField ALGORITHM_ID = IntField.length8(OCTET_11_BIT_80);
+    private static final IntField KEY_ID = IntField.length16(OCTET_12_BIT_88);
+    private static final IntField SOURCE_ADDRESS = IntField.length24(OCTET_14_BIT_104);
+    private static final IntField GROUP_ADDRESS = IntField.length16(OCTET_17_BIT_128);
 
     private EncryptionKeyIdentifier mEncryptionKey;
     private Identifier mSourceAddress;
@@ -75,10 +73,10 @@ public class PushToTalk extends MacStructure
         StringBuilder sb = new StringBuilder();
         if(hasSourceAddress())
         {
-            sb.append("FM:").append(getSourceAddress());
+            sb.append("FM:").append(getSourceAddress()).append(" ");
         }
 
-        sb.append(" TO:").append(getGroupAddress());
+        sb.append("TO:").append(getGroupAddress());
 
         if(isEncrypted())
         {
@@ -122,8 +120,7 @@ public class PushToTalk extends MacStructure
     {
         if(mEncryptionKey == null)
         {
-            mEncryptionKey = EncryptionKeyIdentifier.create(APCO25EncryptionKey.create(getMessage().getInt(ALGORITHM_ID, getOffset()),
-                getMessage().getInt(KEY_ID, getOffset())));
+            mEncryptionKey = EncryptionKeyIdentifier.create(APCO25EncryptionKey.create(getInt(ALGORITHM_ID), getInt(KEY_ID)));
         }
 
         return mEncryptionKey;
@@ -131,7 +128,7 @@ public class PushToTalk extends MacStructure
 
     public boolean hasSourceAddress()
     {
-        return getMessage().getInt(SOURCE_ADDRESS, getOffset()) > 0;
+        return getInt(SOURCE_ADDRESS) > 0;
     }
 
     /**
@@ -141,7 +138,7 @@ public class PushToTalk extends MacStructure
     {
         if(mSourceAddress == null)
         {
-            mSourceAddress = APCO25RadioIdentifier.createFrom(getMessage().getInt(SOURCE_ADDRESS, getOffset()));
+            mSourceAddress = APCO25RadioIdentifier.createFrom(getInt(SOURCE_ADDRESS));
         }
 
         return mSourceAddress;
@@ -154,7 +151,7 @@ public class PushToTalk extends MacStructure
     {
         if(mGroupAddress == null)
         {
-            mGroupAddress = APCO25Talkgroup.create(getMessage().getInt(GROUP_ADDRESS, getOffset()));
+            mGroupAddress = APCO25Talkgroup.create(getInt(GROUP_ADDRESS));
         }
 
         return mGroupAddress;

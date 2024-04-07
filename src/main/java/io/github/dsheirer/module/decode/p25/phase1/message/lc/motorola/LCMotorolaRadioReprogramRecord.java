@@ -17,7 +17,7 @@
  * ****************************************************************************
  */
 
-package io.github.dsheirer.module.decode.p25.phase1.message.lc.standard;
+package io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola;
 
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
@@ -27,58 +27,58 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Source ID extension word.  This is used in conjunction with another link control message to carry a fully qualified
- * source SUID.
+ * Motorola Link Control opcode 0x17 (23).  This is possibly a radio reprogramming record segment that is used
+ * in combination with LCO 0x15.  See notes in header of LCMotorolaRadioReprogramHeader class.
  */
-public class LCSourceIDExtension extends LinkControlWord
+public class LCMotorolaRadioReprogramRecord extends LinkControlWord
 {
-    private static final IntField SOURCE_SUID_WACN = IntField.length20(OCTET_2_BIT_16);
-    private static final IntField SOURCE_SUID_SYSTEM = IntField.length12(OCTET_4_BIT_32 + 4);
-    private static final IntField SOURCE_SUID_RADIO = IntField.length24(OCTET_6_BIT_48);
+    private static final IntField RECORD_NUMBER = IntField.length8(OCTET_2_BIT_16);
+    private static final IntField SEQUENCE_NUMBER = IntField.length4(OCTET_3_BIT_24);
 
     /**
      * Constructs a Link Control Word from the binary message sequence.
      *
      * @param message
      */
-    public LCSourceIDExtension(CorrectedBinaryMessage message)
+    public LCMotorolaRadioReprogramRecord(CorrectedBinaryMessage message)
     {
         super(message);
     }
 
-    @Override
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(getMessageStub());
-        sb.append(" WACN:").append(getWACN());
-        sb.append(" SYSTEM:").append(getSystem());
-        sb.append(" ID:").append(getId());
+
+        if(!isValid())
+        {
+            sb.append("**CRC-FAILED** ");
+        }
+
+        if(isEncrypted())
+        {
+            sb.append(" ENCRYPTED");
+        }
+
+        sb.append("MOTOROLA RADIO REPROGRAM RECORD:").append(getRecordNumber());
+        sb.append(" OF SEQUENCE:").append(getSequenceNumber());
+        sb.append(" MSG:").append(getMessage().toHexString());
         return sb.toString();
     }
 
     /**
-     * Source SUID WACN value.
+     * Record number
      */
-    public int getWACN()
+    public int getRecordNumber()
     {
-        return getInt(SOURCE_SUID_WACN);
+        return getInt(RECORD_NUMBER);
     }
 
     /**
-     * Source SUID System value.
+     * Sequence number
      */
-    public int getSystem()
+    public int getSequenceNumber()
     {
-        return getInt(SOURCE_SUID_SYSTEM);
-    }
-
-    /**
-     * Source SUID radio value.
-     */
-    public int getId()
-    {
-        return getInt(SOURCE_SUID_RADIO);
+        return getInt(SEQUENCE_NUMBER);
     }
 
     @Override

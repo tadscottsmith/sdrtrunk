@@ -47,6 +47,21 @@ public abstract class FullyQualifiedRadioIdentifier extends RadioIdentifier
         mRadio = id;
     }
 
+    public int getWacn()
+    {
+        return mWacn;
+    }
+
+    public int getSystem()
+    {
+        return mSystem;
+    }
+
+    public int getRadio()
+    {
+        return mRadio;
+    }
+
     /**
      * Fully qualified radio identity.
      * @return radio identity

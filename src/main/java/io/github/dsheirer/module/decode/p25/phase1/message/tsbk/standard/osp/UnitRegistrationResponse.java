@@ -71,7 +71,7 @@ public class UnitRegistrationResponse extends OSPMessage
 
             if(id == persona || persona == 0)
             {
-                mRegisteredRadio = APCO25RadioIdentifier.createAny(id);
+                mRegisteredRadio = APCO25RadioIdentifier.createTo(id);
             }
             else
             {

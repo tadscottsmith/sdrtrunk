@@ -109,7 +109,7 @@ public class PacketMessage extends P25P1Message
 
         if(getPacket() instanceof IPV4Packet)
         {
-            sb.append(" LLID:").append(getHeader().getLLID());
+            sb.append(" LLID:").append(getHeader().getTargetLLID());
 
             SNDCPPacketHeader sndcpPacketHeader = getSNDCPPacketHeader();
             sb.append(" NSAPI:").append(sndcpPacketHeader.getNSAPI());
@@ -262,7 +262,7 @@ public class PacketMessage extends P25P1Message
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getPDUSequence().getHeader().getLLID());
+            mIdentifiers.add(getHeader().getTargetLLID());
 
             if(getPacket() != null)
             {

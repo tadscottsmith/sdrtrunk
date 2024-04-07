@@ -22,9 +22,11 @@ package io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola;
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.FragmentedIntField;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.module.decode.dmr.identifier.P25Location;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlWord;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import org.jdesktop.swingx.mapviewer.GeoPosition;
 
 /**
  * Motorola Unit Self-Reported GPS Location
@@ -41,6 +43,10 @@ public class LCMotorolaUnitGPS extends LinkControlWord
     private static final FragmentedIntField LONGITUDE = FragmentedIntField.of(49, 50, 51, 52, 53, 54, 55, 56,
             57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71);
 
+    private P25Location mLocation;
+    private GeoPosition mGeoPosition;
+    private List<Identifier> mIdentifiers;
+
     /**
      * Constructs an instance
      * @param message binary
@@ -56,6 +62,34 @@ public class LCMotorolaUnitGPS extends LinkControlWord
         StringBuilder sb = new StringBuilder();
         sb.append("MOTOROLA UNIT GPS LOCATION: ").append(getLatitude()).append(" ").append(getLongitude());
         return sb.toString();
+    }
+
+    /**
+     * GPS Location
+     * @return location in decimal degrees
+     */
+    public P25Location getLocation()
+    {
+        if(mLocation == null)
+        {
+            mLocation = P25Location.createFrom(getLatitude(), getLongitude());
+        }
+
+        return mLocation;
+    }
+
+    /**
+     * Geo position
+     * @return position
+     */
+    public GeoPosition getGeoPosition()
+    {
+        if(mGeoPosition == null)
+        {
+            mGeoPosition = new GeoPosition(getLatitude(), getLongitude());
+        }
+
+        return mGeoPosition;
     }
 
     /**
@@ -82,6 +116,12 @@ public class LCMotorolaUnitGPS extends LinkControlWord
     @Override
     public List<Identifier> getIdentifiers()
     {
-        return Collections.emptyList();
+        if(mIdentifiers == null)
+        {
+            mIdentifiers = new ArrayList<>();
+            mIdentifiers.add(getLocation());
+        }
+
+        return mIdentifiers;
     }
 }

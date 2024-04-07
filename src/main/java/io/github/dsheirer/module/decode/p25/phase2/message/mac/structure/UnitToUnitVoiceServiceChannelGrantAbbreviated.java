@@ -25,7 +25,6 @@ import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
-import io.github.dsheirer.module.decode.p25.identifier.channel.P25P2Channel;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.IP25ChannelGrantDetailProvider;
@@ -96,7 +95,7 @@ public class UnitToUnitVoiceServiceChannelGrantAbbreviated extends MacStructure
     {
         if(mChannel == null)
         {
-            mChannel = new APCO25Channel(new P25P2Channel(getInt(FREQUENCY_BAND), getInt(CHANNEL_NUMBER)));
+            mChannel = APCO25Channel.create(getInt(FREQUENCY_BAND), getInt(CHANNEL_NUMBER));
         }
 
         return mChannel;

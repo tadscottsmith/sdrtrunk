@@ -31,12 +31,14 @@ import io.github.dsheirer.controller.channel.IChannelEventListener;
 import io.github.dsheirer.identifier.Form;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.IdentifierClass;
-import io.github.dsheirer.identifier.IdentifierCollection;
 import io.github.dsheirer.identifier.MutableIdentifierCollection;
 import io.github.dsheirer.identifier.Role;
+import io.github.dsheirer.identifier.configuration.FrequencyConfigurationIdentifier;
+import io.github.dsheirer.identifier.decoder.DecoderLogicalChannelNameIdentifier;
 import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.patch.PatchGroupManager;
 import io.github.dsheirer.identifier.patch.PatchGroupPreLoadDataContent;
+import io.github.dsheirer.log.LoggingSuppressor;
 import io.github.dsheirer.message.IMessage;
 import io.github.dsheirer.module.decode.DecoderType;
 import io.github.dsheirer.module.decode.event.DecodeEvent;
@@ -56,13 +58,20 @@ import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
 import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
 import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HDUMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HeaderData;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlOpcode;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlWord;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUpdate;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaTalkComplete;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaUnitGPS;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCCallTermination;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCExtendedFunctionCommand;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCExtendedFunctionCommandExtended;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCGroupVoiceChannelUpdate;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCGroupVoiceChannelUpdateExplicit;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCMessageUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCMessageUpdateExtended;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCRFSSStatusBroadcast;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCRFSSStatusBroadcastExplicit;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCStatusUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCStatusUpdateExtended;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.standard.LCTelephoneInterconnectAnswerRequest;
@@ -70,22 +79,21 @@ import io.github.dsheirer.module.decode.p25.phase1.message.ldu.EncryptionSyncPar
 import io.github.dsheirer.module.decode.p25.phase1.message.ldu.LDU1Message;
 import io.github.dsheirer.module.decode.p25.phase1.message.ldu.LDU2Message;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.PDUMessage;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.PDUSequenceMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.AMBTCMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCAuthenticationResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCIndividualDataServiceRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCLocationRegistrationRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCMessageUpdateRequest;
-import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCStatusQueryResponse;
-import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCStatusUpdateRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitAcknowledgeResponse;
-import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitToUnitVoiceServiceAnswerResponse;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitToUnitAnswerResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.isp.AMBTCUnitToUnitVoiceServiceRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCGroupAffiliationResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCGroupDataChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCGroupVoiceChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCIndividualDataChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMessageUpdate;
-import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMotorolaGroupRegroupChannelGrantExplicit;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCMotorolaGroupRegroupChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCProtectionParameterBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCStatusUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCTelephoneInterconnectChannelGrant;
@@ -95,6 +103,7 @@ import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCUn
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCUnitToUnitVoiceServiceChannelGrantUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.packet.PacketMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.packet.sndcp.SNDCPPacketMessage;
+import io.github.dsheirer.module.decode.p25.phase1.message.pdu.response.ResponseMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.umbtc.isp.UMBTCTelephoneInterconnectRequestExplicitDialing;
 import io.github.dsheirer.module.decode.p25.phase1.message.tdu.TDULinkControlMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.Opcode;
@@ -117,6 +126,7 @@ import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.Mes
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.SNDCPDataChannelRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.SNDCPDataPageResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.SNDCPReconnectRequest;
+import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.StatusQueryRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.StatusQueryResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.StatusUpdateRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.isp.TelephoneInterconnectAnswerResponse;
@@ -135,8 +145,10 @@ import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.Gro
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.LocationRegistrationResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.MessageUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.QueuedResponse;
+import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.RFSSStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.RoamingAddressCommand;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.SNDCPDataChannelGrant;
+import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.StatusQuery;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.StatusUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.TelephoneInterconnectAnswerRequest;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.TelephoneInterconnectVoiceChannelGrant;
@@ -144,11 +156,12 @@ import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.Tel
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.UnitRegistrationResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.UnitToUnitVoiceChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.standard.osp.UnitToUnitVoiceChannelGrantUpdate;
-import io.github.dsheirer.module.decode.p25.reference.Encryption;
 import io.github.dsheirer.module.decode.p25.reference.ServiceOptions;
+import io.github.dsheirer.module.decode.p25.reference.VoiceServiceOptions;
 import io.github.dsheirer.protocol.Protocol;
 import io.github.dsheirer.sample.Listener;
 import io.github.dsheirer.util.PacketUtil;
+import java.util.Collections;
 import java.util.List;
 import org.jdesktop.swingx.mapviewer.GeoPosition;
 import org.slf4j.Logger;
@@ -157,19 +170,17 @@ import org.slf4j.LoggerFactory;
 /**
  * Decoder state for an APCO25 channel.  Maintains the call/data/idle state of the channel and produces events by
  * monitoring the decoded message stream.
- *
  */
 public class P25P1DecoderState extends DecoderState implements IChannelEventListener
 {
-    private final static Logger mLog = LoggerFactory.getLogger(P25P1DecoderState.class);
-
-    private ChannelType mChannelType;
-    private P25P1Decoder.Modulation mModulation;
-    private PatchGroupManager mPatchGroupManager = new PatchGroupManager();
-    private P25P1NetworkConfigurationMonitor mNetworkConfigurationMonitor;
+    private static final Logger mLog = LoggerFactory.getLogger(P25P1DecoderState.class);
+    private static final LoggingSuppressor LOGGING_SUPPRESSOR = new LoggingSuppressor(mLog);
+    private final Channel mChannel;
+    private final P25P1Decoder.Modulation mModulation;
+    private final PatchGroupManager mPatchGroupManager = new PatchGroupManager();
+    private final P25P1NetworkConfigurationMonitor mNetworkConfigurationMonitor;
+    private final Listener<ChannelEvent> mChannelEventListener;
     private P25TrafficChannelManager mTrafficChannelManager;
-    private Listener<ChannelEvent> mChannelEventListener;
-    private DecodeEvent mCurrentCallEvent;
 
     /**
      * Constructs an APCO-25 decoder state with an optional traffic channel manager.
@@ -178,7 +189,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      */
     public P25P1DecoderState(Channel channel, P25TrafficChannelManager trafficChannelManager)
     {
-        mChannelType = channel.getChannelType();
+        mChannel = channel;
         mModulation = ((DecodeConfigP25Phase1)channel.getDecodeConfiguration()).getModulation();
         mNetworkConfigurationMonitor = new P25P1NetworkConfigurationMonitor(mModulation);
 
@@ -189,9 +200,9 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         }
         else
         {
-            mChannelEventListener = channelEvent -> {
-                //do nothing with channel events if we're not configured to process traffic channels
-            };
+            mTrafficChannelManager = new P25TrafficChannelManager(channel);
+            //Do nothing with channel events if we're not configured to process traffic channels
+            mChannelEventListener = channelEvent -> {};
         }
     }
 
@@ -232,31 +243,6 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     }
 
     /**
-     * Performs a full reset to prepare this object for reuse on a new channel
-     */
-    @Override
-    public void reset()
-    {
-        super.reset();
-        resetState();
-    }
-
-    /**
-     * Resets any temporal state details
-     */
-    protected void resetState()
-    {
-        super.resetState();
-
-        if(mCurrentCallEvent != null)
-        {
-            mCurrentCallEvent.end(System.currentTimeMillis());
-            broadcast(mCurrentCallEvent);
-            mCurrentCallEvent = null;
-        }
-    }
-
-    /**
      * Processes an identifier collection to harvest Patch Groups to preload when this channel is first starting up.
      * @param preLoadDataContent containing an identifier collection with optional patch group identifier(s).
      */
@@ -278,9 +264,13 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     @Override
     public void receive(IMessage iMessage)
     {
-        if(iMessage instanceof P25P1Message)
+        if(iMessage instanceof P25P1Message message)
         {
-            P25P1Message message = (P25P1Message) iMessage;
+            if(message.toString().contains("IPPKT"))
+            {
+                List<Identifier> identifiers = message.getIdentifiers();
+                int a = 0;
+            }
 
             getIdentifierCollection().update(message.getNAC());
 
@@ -290,7 +280,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     processAMBTC(message);
                     break;
                 case HEADER_DATA_UNIT:
-                    processHDU((HDUMessage)message);
+                    processHDU(message);
                     break;
                 case IP_PACKET_DATA:
                     processPacketData(message);
@@ -326,22 +316,144 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     }
 
     /**
-     * Commands the traffic channel manager to process a traffic channel grant and allocate a decoder
-     * to process the traffic channel.
+     * Commands the traffic channel manager to process a traffic channel grant and allocate a decoder to process the
+     * traffic channel.
      * @param apco25Channel to allocate
      * @param serviceOptions for the channel
-     * @param identifierCollection identifying the users of the channel
+     * @param identifiers to add to the current identifier collection
      * @param opcode that identifies the type of channel grant
      * @param timestamp when the channel grant occurred.
      */
     private void processChannelGrant(APCO25Channel apco25Channel, ServiceOptions serviceOptions,
-                                     IdentifierCollection identifierCollection, Opcode opcode, long timestamp)
+                                     List<Identifier> identifiers, Opcode opcode, long timestamp)
     {
-        if(mTrafficChannelManager != null && apco25Channel.getValue().getFrequencyBand() != null)
+        if(apco25Channel.getValue().getDownlinkFrequency() > 0)
         {
-            mTrafficChannelManager.processP1ChannelGrant(apco25Channel, serviceOptions, identifierCollection, opcode,
-                    timestamp);
+            MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers);
+            mTrafficChannelManager.processP1ChannelGrant(apco25Channel, serviceOptions, mic, opcode, timestamp);
         }
+    }
+
+    /**
+     * Process an update for another channel and send it to the traffic channel manager.
+     * @param channel where the call activity is happening.
+     * @param serviceOptions for the call, optional null.
+     * @param identifiers involved in the call
+     * @param opcode for the update
+     * @param timestamp of the message
+     */
+    private void processChannelUpdate(APCO25Channel channel, ServiceOptions serviceOptions, List<Identifier> identifiers,
+                                      Opcode opcode, long timestamp)
+    {
+        MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers);
+        mTrafficChannelManager.processP1ChannelUpdate(channel, serviceOptions, mic, opcode, timestamp);
+    }
+
+    /**
+     * Creates a decode event type from the link control word
+     */
+    private DecodeEventType getLCDecodeEventType(LinkControlWord lcw)
+    {
+        boolean encrypted = lcw.isEncrypted();;
+
+        switch(lcw.getOpcode())
+        {
+            case GROUP_VOICE_CHANNEL_USER:
+                return encrypted ? DecodeEventType.CALL_GROUP_ENCRYPTED : DecodeEventType.CALL_GROUP;
+            case MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_USER:
+                return encrypted ? DecodeEventType.CALL_PATCH_GROUP_ENCRYPTED : DecodeEventType.CALL_PATCH_GROUP;
+            case TELEPHONE_INTERCONNECT_VOICE_CHANNEL_USER:
+                return encrypted ? DecodeEventType.CALL_INTERCONNECT_ENCRYPTED : DecodeEventType.CALL_INTERCONNECT;
+            case UNIT_TO_UNIT_VOICE_CHANNEL_USER:
+            case UNIT_TO_UNIT_VOICE_CHANNEL_USER_EXTENDED:
+                return encrypted ? DecodeEventType.CALL_UNIT_TO_UNIT_ENCRYPTED : DecodeEventType.CALL_UNIT_TO_UNIT;
+            default:
+                return encrypted ? DecodeEventType.CALL_ENCRYPTED : DecodeEventType.CALL;
+        }
+    }
+
+    /**
+     * Link Control (LC) Channel user (ie current user on this channel).
+     */
+    private void processLCChannelUser(LinkControlWord lcw, long timestamp)
+    {
+        List<Identifier> updated = mPatchGroupManager.update(lcw.getIdentifiers());
+        getIdentifierCollection().update(updated);
+        DecodeEventType decodeEventType = getLCDecodeEventType(lcw);
+        ServiceOptions serviceOptions = lcw.isEncrypted() ? VoiceServiceOptions.createEncrypted() :
+                VoiceServiceOptions.createUnencrypted();
+        mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), getCurrentChannel(), decodeEventType,
+                serviceOptions, getIdentifierCollection(), timestamp, null );
+    }
+
+    /**
+     * Broadcasts an event from the AMBTC message
+     * @param ambtcMessage with identifiers
+     * @param decodeEventType for the event
+     * @param details to add to the event
+     */
+    private void broadcastEvent(AMBTCMessage ambtcMessage, DecodeEventType decodeEventType, String details)
+    {
+        broadcastEvent(ambtcMessage.getIdentifiers(), ambtcMessage.getTimestamp(), decodeEventType, details);
+    }
+
+    /**
+     * Broadcasts an event from the TSBK message
+     * @param tsbkMessage with identifiers
+     * @param decodeEventType for the event
+     * @param details to add to the event
+     */
+    private void broadcastEvent(TSBKMessage tsbkMessage, DecodeEventType decodeEventType, String details)
+    {
+        broadcastEvent(tsbkMessage.getIdentifiers(), tsbkMessage.getTimestamp(), decodeEventType, details);
+    }
+
+    /**
+     * Broadcasts the arguments as a new decode event
+     * @param identifiers involved in the event
+     * @param timestamp of the message/event
+     * @param decodeEventType of the event
+     * @param details for the event
+     */
+    private void broadcastEvent(List<Identifier> identifiers, long timestamp, DecodeEventType decodeEventType, String details)
+    {
+        MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers);
+
+        broadcast(P25DecodeEvent.builder(decodeEventType, timestamp)
+                .channel(getCurrentChannel())
+                .details(details)
+                .identifiers(mic)
+                .build());
+    }
+
+    /**
+     * Creates a copy of the current identifier collection, removes any USER identifiers and adds the argument identifiers
+     * passing each identifier through the patch group manager to replace with a patch group if it exists
+     * @param identifiers to add to the collection copy
+     * @return collection
+     */
+    private MutableIdentifierCollection getMutableIdentifierCollection(List<Identifier> identifiers)
+    {
+        MutableIdentifierCollection requestCollection = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
+        requestCollection.remove(IdentifierClass.USER);
+
+        for(Identifier identifier: identifiers)
+        {
+            requestCollection.update(mPatchGroupManager.update(identifier));
+        }
+
+        return requestCollection;
+    }
+
+    /**
+     * Creates a copy of the current identifier collection, removes any USER identifiers and adds the argument identifier
+     * passed through the patch group manager to replace with a patch group if it exists
+     * @param identifier to add to the collection copy
+     * @return collection
+     */
+    private MutableIdentifierCollection getMutableIdentifierCollection(Identifier identifier)
+    {
+        return getMutableIdentifierCollection(Collections.singletonList(identifier));
     }
 
     /**
@@ -351,152 +463,151 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      */
     private void processAMBTC(P25P1Message message)
     {
-        if(message instanceof AMBTCMessage && message.isValid())
+        if(message.isValid() && message instanceof AMBTCMessage ambtc)
         {
-            AMBTCMessage ambtc = (AMBTCMessage)message;
-
             switch(ambtc.getHeader().getOpcode())
             {
                 case ISP_AUTHENTICATION_RESPONSE:
-                    processAMBTCIspAuthenticationResponse(message, ambtc);
+                    if(ambtc instanceof AMBTCAuthenticationResponse ar)
+                    {
+                        broadcastEvent(ambtc, DecodeEventType.RESPONSE, "AUTHENTICATION:" +
+                                ar.getAuthenticationValue());
+                    }
                     break;
                 case ISP_CALL_ALERT_REQUEST:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "CALL ALERT");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                            "CALL ALERT");
                     break;
                 case ISP_GROUP_AFFILIATION_REQUEST:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "GROUP AFFILIATION");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                            "GROUP AFFILIATION");
                     break;
                 case ISP_INDIVIDUAL_DATA_SERVICE_REQUEST:
-                    if(ambtc instanceof AMBTCIndividualDataServiceRequest)
+                    if(ambtc instanceof AMBTCIndividualDataServiceRequest idsr)
                     {
-                        AMBTCIndividualDataServiceRequest idsr = (AMBTCIndividualDataServiceRequest)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "INDIVIDUAL DATA SERVICE " + idsr.getDataServiceOptions());
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                                "INDIVIDUAL DATA SERVICE " + idsr.getDataServiceOptions());
                     }
                     break;
                 case ISP_LOCATION_REGISTRATION_REQUEST:
-                    if(ambtc instanceof AMBTCLocationRegistrationRequest)
+                    if(ambtc instanceof AMBTCLocationRegistrationRequest lrr)
                     {
-                        AMBTCLocationRegistrationRequest lrr = (AMBTCLocationRegistrationRequest)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "LOCATION REGISTRATION - UNIQUE ID:" + lrr.getSourceId());
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                                "LOCATION REGISTRATION - UNIQUE ID:" + lrr.getSourceId());
                     }
                     break;
                 case ISP_MESSAGE_UPDATE_REQUEST:
-                    if(ambtc instanceof AMBTCMessageUpdateRequest)
+                    if(ambtc instanceof AMBTCMessageUpdateRequest mur)
                     {
-                        AMBTCMessageUpdateRequest mur = (AMBTCMessageUpdateRequest)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.SDM, "MESSAGE:" + mur.getShortDataMessage());
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.SDM,
+                                "MESSAGE:" + mur.getShortDataMessage());
                     }
                     break;
                 case ISP_ROAMING_ADDRESS_REQUEST:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "ROAMING ADDRESS");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                            "ROAMING ADDRESS");
                     break;
                 case ISP_STATUS_QUERY_REQUEST:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "STATUS QUERY");
-                    break;
                 case ISP_STATUS_QUERY_RESPONSE:
-                    processAMBTCStatusQueryResponse(ambtc);
-                    break;
                 case ISP_STATUS_UPDATE_REQUEST:
-                    processAMBTCStatusUpdateRequest(ambtc);
+                    processAMBTCStatus(ambtc);
                     break;
                 case ISP_UNIT_ACKNOWLEDGE_RESPONSE:
-                    if(ambtc instanceof AMBTCUnitAcknowledgeResponse)
+                    if(ambtc instanceof AMBTCUnitAcknowledgeResponse uar)
                     {
-                        AMBTCUnitAcknowledgeResponse uar = (AMBTCUnitAcknowledgeResponse)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.RESPONSE, "ACKNOWLEDGE:" + uar.getAcknowledgedService());
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.RESPONSE,
+                                "ACKNOWLEDGE:" + uar.getAcknowledgedService());
                     }
                     break;
                 case ISP_UNIT_TO_UNIT_VOICE_SERVICE_REQUEST:
-                    if(ambtc instanceof AMBTCUnitToUnitVoiceServiceRequest)
+                    if(ambtc instanceof AMBTCUnitToUnitVoiceServiceRequest uuvsr)
                     {
-                        AMBTCUnitToUnitVoiceServiceRequest uuvsr = (AMBTCUnitToUnitVoiceServiceRequest)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST, "UNIT-2-UNIT VOICE SERVICE " + uuvsr.getVoiceServiceOptions());
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                                "UNIT-2-UNIT VOICE SERVICE " + uuvsr.getVoiceServiceOptions());
                     }
                     break;
                 case ISP_UNIT_TO_UNIT_ANSWER_RESPONSE:
-                    processAMBTCUnitToUnitAnswerResponse(ambtc);
+                    if(ambtc instanceof AMBTCUnitToUnitAnswerResponse uuar)
+                    {
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                                "UNIT-2-UNIT ANSWER RESPONSE " + uuar.getAnswerResponse());
+                    }
                     break;
 
                 //Network configuration messages
                 case OSP_ADJACENT_STATUS_BROADCAST:
-                    mNetworkConfigurationMonitor.process(ambtc);
-                    break;
                 case OSP_NETWORK_STATUS_BROADCAST:
-                    mNetworkConfigurationMonitor.process(ambtc);
-                    break;
                 case OSP_RFSS_STATUS_BROADCAST:
                     mNetworkConfigurationMonitor.process(ambtc);
                     break;
 
                 //Channel grants
                 case OSP_GROUP_DATA_CHANNEL_GRANT:
-                    processAMBTCGroupDataChannelGrant(ambtc);
-                    break;
                 case OSP_GROUP_VOICE_CHANNEL_GRANT:
-                case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_GRANT:
-                    processAMBTCGroupVoiceChannelGrant(ambtc);
-                    break;
                 case OSP_INDIVIDUAL_DATA_CHANNEL_GRANT:
-                    processAMBTCIndividualDataChannelGrant(ambtc);
-                    break;
                 case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT:
-                    processAMBTCTelephoneInterconnectVoiceChannelGrant(ambtc);
-                    break;
-                case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE:
-                    processAMBTCTelephoneInterconnectVoiceChannelGrantUpdate(ambtc);
-                    break;
                 case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT:
-                    processAMBTCUnitToUnitVoiceChannelGrant(ambtc);
+                case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_GRANT:
+                    processAMBTCChannelGrant(ambtc);
                     break;
+
+                //Channel grant updates
+                case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE:
                 case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE:
-                    processAMBTCUnitToUnitVoiceChannelGrantUpdate(ambtc);
+                    processAMBTCChannelGrantUpdate(ambtc);
                     break;
+
                 case OSP_UNIT_TO_UNIT_ANSWER_REQUEST:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.PAGE, "ANSWER REQUEST");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.PAGE,
+                            "ANSWER REQUEST");
                     break;
                 case OSP_CALL_ALERT:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.PAGE, "CALL ALERT");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.PAGE,
+                            "CALL ALERT");
                     break;
                 case OSP_GROUP_AFFILIATION_QUERY:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.QUERY, "GROUP AFFILIATION");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.QUERY,
+                            "GROUP AFFILIATION");
                     break;
                 case OSP_GROUP_AFFILIATION_RESPONSE:
-                    processAMBTCGroupAffiliationResponse(ambtc);
+                    if(ambtc instanceof AMBTCGroupAffiliationResponse gar)
+                    {
+                        broadcastEvent(ambtc, DecodeEventType.RESPONSE, "AFFILIATION GROUP:" +
+                                gar.getGroupAddress() + " ANNOUNCEMENT GROUP:" + gar.getAnnouncementGroup());
+                    }
                     break;
                 case OSP_MESSAGE_UPDATE:
-                    if(ambtc instanceof AMBTCMessageUpdate)
+                    if(ambtc instanceof AMBTCMessageUpdate mu)
                     {
-                        AMBTCMessageUpdate mu = (AMBTCMessageUpdate)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.SDM, "MESSAGE:" + mu.getShortDataMessage());
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.SDM, "MESSAGE:" +
+                                mu.getShortDataMessage());
                     }
                     break;
                 case OSP_PROTECTION_PARAMETER_BROADCAST:
-                    processAMBTCProtectionParameterBroadcast(ambtc);
+                    if(ambtc instanceof AMBTCProtectionParameterBroadcast ppb)
+                    {
+                        broadcastEvent(ambtc, DecodeEventType.RESPONSE, "USE ENCRYPTION " + ppb.getEncryptionKey() +
+                                " OUTBOUND MI:" + ppb.getOutboundMessageIndicator() +
+                                " INBOUND MI:" + ppb.getInboundMessageIndicator());
+                    }
                     break;
                 case OSP_ROAMING_ADDRESS_UPDATE:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.RESPONSE, "ROAMING ADDRESS UPDATE");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.RESPONSE,
+                            "ROAMING ADDRESS UPDATE");
                     break;
                 case OSP_ROAMING_ADDRESS_COMMAND:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.COMMAND, "ROAMING ADDRESS");
+                    broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.COMMAND,
+                            "ROAMING ADDRESS");
                     break;
                 case OSP_STATUS_QUERY:
-                    processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.QUERY, "STATUS");
-                    break;
                 case OSP_STATUS_UPDATE:
-                    processAMBTCStatusUpdate(ambtc);
+                    processAMBTCStatus(ambtc);
                     break;
                 case OSP_UNIT_REGISTRATION_RESPONSE:
-                    if(ambtc instanceof AMBTCUnitRegistrationResponse)
+                    if(ambtc instanceof AMBTCUnitRegistrationResponse urr)
                     {
-                        AMBTCUnitRegistrationResponse urr = (AMBTCUnitRegistrationResponse)ambtc;
-
-                        processBroadcast(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REGISTER, urr.getResponse() + " UNIT REGISTRATION");
+                        broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REGISTER,
+                                urr.getResponse() + " UNIT REGISTRATION");
                     }
                     break;
                 default:
@@ -508,222 +619,130 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         broadcast(new DecoderStateEvent(this, Event.DECODE, State.CONTROL));
     }
 
-    private void processAMBTCStatusUpdate(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCStatusUpdate)
-        {
-            AMBTCStatusUpdate su = (AMBTCStatusUpdate)ambtc;
-            processBroadcast(ambtc, DecodeEventType.STATUS,
-                    "UNIT:" + su.getUnitStatus() + " USER:" + su.getUserStatus());
-        }
-    }
-
-    private void processAMBTCProtectionParameterBroadcast(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCProtectionParameterBroadcast)
-        {
-            AMBTCProtectionParameterBroadcast ppb = (AMBTCProtectionParameterBroadcast)ambtc;
-            processBroadcast(ambtc, DecodeEventType.RESPONSE, "USE ENCRYPTION " + ppb.getEncryptionKey() +
-                    " OUTBOUND MI:" + ppb.getOutboundMessageIndicator() +
-                    " INBOUND MI:" + ppb.getInboundMessageIndicator());
-        }
-    }
-
-    private void processAMBTCGroupAffiliationResponse(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCGroupAffiliationResponse)
-        {
-            AMBTCGroupAffiliationResponse gar = (AMBTCGroupAffiliationResponse)ambtc;
-            processBroadcast(ambtc, DecodeEventType.RESPONSE, "AFFILIATION GROUP:" + gar.getGroupAddress() + " ANNOUNCEMENT GROUP:" + gar.getAnnouncementGroup());
-        }
-    }
-
-    private void processAMBTCUnitToUnitVoiceChannelGrantUpdate(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCUnitToUnitVoiceServiceChannelGrantUpdate)
-        {
-            AMBTCUnitToUnitVoiceServiceChannelGrantUpdate uuvscgu = (AMBTCUnitToUnitVoiceServiceChannelGrantUpdate)ambtc;
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(uuvscgu.getIdentifiers());
-
-            processChannelGrant(uuvscgu.getChannel(), uuvscgu.getServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCUnitToUnitVoiceChannelGrant(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCUnitToUnitVoiceServiceChannelGrant)
-        {
-            AMBTCUnitToUnitVoiceServiceChannelGrant uuvscg = (AMBTCUnitToUnitVoiceServiceChannelGrant)ambtc;
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(uuvscg.getIdentifiers());
-
-            processChannelGrant(uuvscg.getChannel(), uuvscg.getServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCTelephoneInterconnectVoiceChannelGrantUpdate(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCTelephoneInterconnectChannelGrantUpdate)
-        {
-            AMBTCTelephoneInterconnectChannelGrantUpdate ticgu = (AMBTCTelephoneInterconnectChannelGrantUpdate)ambtc;
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(ticgu.getIdentifiers());
-
-            processChannelGrant(ticgu.getChannel(), ticgu.getServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCTelephoneInterconnectVoiceChannelGrant(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCTelephoneInterconnectChannelGrant)
-        {
-            AMBTCTelephoneInterconnectChannelGrant ticg = (AMBTCTelephoneInterconnectChannelGrant)ambtc;
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(ticg.getIdentifiers());
-
-            processChannelGrant(ticg.getChannel(), ticg.getServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCIndividualDataChannelGrant(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCIndividualDataChannelGrant)
-        {
-            AMBTCIndividualDataChannelGrant idcg = (AMBTCIndividualDataChannelGrant)ambtc;
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(idcg.getIdentifiers());
-
-            processChannelGrant(idcg.getChannel(), idcg.getDataServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCGroupVoiceChannelGrant(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCGroupVoiceChannelGrant gvcg)
-        {
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(gvcg.getIdentifiers());
-
-            processChannelGrant(gvcg.getChannel(), gvcg.getServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-        else if(ambtc instanceof AMBTCMotorolaGroupRegroupChannelGrantExplicit mgrcge)
-        {
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(mgrcge.getIdentifiers());
-
-            //Update any patch group identifiers
-            for(Identifier identifier: mgrcge.getIdentifiers())
-            {
-                identifierCollection.update(mPatchGroupManager.update(identifier));
-            }
-
-            processChannelGrant(mgrcge.getChannel(), mgrcge.getServiceOptions(), identifierCollection, ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCGroupDataChannelGrant(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCGroupDataChannelGrant)
-        {
-            AMBTCGroupDataChannelGrant gdcg = (AMBTCGroupDataChannelGrant)ambtc;
-
-            MutableIdentifierCollection identifierCollection = getMutableIdentifierCollection(gdcg.getIdentifiers());
-            processChannelGrant(gdcg.getChannel(), gdcg.getDataServiceOptions(),
-                    identifierCollection, ambtc.getHeader().getOpcode(),
-                    ambtc.getTimestamp());
-        }
-    }
-
-    private void processAMBTCUnitToUnitAnswerResponse(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCUnitToUnitVoiceServiceAnswerResponse)
-        {
-            AMBTCUnitToUnitVoiceServiceAnswerResponse uuvsar = (AMBTCUnitToUnitVoiceServiceAnswerResponse)ambtc;
-            processBroadcast(ambtc, DecodeEventType.RESPONSE,
-                uuvsar.getAnswerResponse() + " UNIT-2-UNIT VOICE SERVICE " + uuvsar.getServiceOptions());
-        }
-    }
-
-    private void processAMBTCStatusUpdateRequest(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCStatusUpdateRequest)
-        {
-            AMBTCStatusUpdateRequest sur = (AMBTCStatusUpdateRequest)ambtc;
-            processBroadcast(ambtc, DecodeEventType.STATUS,
-                    "UNIT:" + sur.getUnitStatus() + " USER:" + sur.getUserStatus());
-        }
-    }
-
-    private void processAMBTCStatusQueryResponse(AMBTCMessage ambtc) {
-        if(ambtc instanceof AMBTCStatusQueryResponse)
-        {
-            AMBTCStatusQueryResponse sqr = (AMBTCStatusQueryResponse)ambtc;
-            processBroadcast(ambtc, DecodeEventType.STATUS,
-                    "UNIT:" + sqr.getUnitStatus() + " USER:" + sqr.getUserStatus());
-        }
-    }
-
-    private void processBroadcast(AMBTCMessage ambtcMessage, DecodeEventType request, String details) {
-        processBroadcast(ambtcMessage.getIdentifiers(), ambtcMessage.getTimestamp(), request, details);
-    }
-
-    private void processBroadcast(TSBKMessage tsbkMessage, DecodeEventType request, String details) {
-        processBroadcast(tsbkMessage.getIdentifiers(), tsbkMessage.getTimestamp(), request, details);
-    }
-
-    private void processBroadcast(List<Identifier> identifiers, long timestamp, DecodeEventType request, String s) {
-        MutableIdentifierCollection requestCollection = getMutableIdentifierCollection(identifiers);
-
-        broadcast(P25DecodeEvent.builder(request, timestamp)
-                .channel(getCurrentChannel())
-                .details(s)
-                .identifiers(requestCollection)
-                .build());
-    }
-
-    private MutableIdentifierCollection getMutableIdentifierCollection(List<Identifier> identifiers) {
-        MutableIdentifierCollection requestCollection = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-        requestCollection.remove(IdentifierClass.USER);
-        requestCollection.update(identifiers);
-        return requestCollection;
-    }
-
-    private void processAMBTCIspAuthenticationResponse(P25P1Message message, AMBTCMessage ambtc)
+    /**
+     * Process AMBTC status message
+     */
+    private void processAMBTCStatus(AMBTCMessage ambtc)
     {
-        if(message instanceof AMBTCAuthenticationResponse)
+        switch(ambtc.getHeader().getOpcode())
         {
-            AMBTCAuthenticationResponse ar = (AMBTCAuthenticationResponse)ambtc;
-            processBroadcast(ambtc, DecodeEventType.RESPONSE, "AUTHENTICATION:" + ar.getAuthenticationValue());
+            case ISP_STATUS_QUERY_REQUEST:
+            case OSP_STATUS_QUERY:
+                broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                        "STATUS QUERY");
+                break;
+            case ISP_STATUS_QUERY_RESPONSE:
+                broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.RESPONSE,
+                        "STATUS QUERY");
+                break;
+            case ISP_STATUS_UPDATE_REQUEST:
+                broadcastEvent(ambtc.getIdentifiers(), ambtc.getTimestamp(), DecodeEventType.REQUEST,
+                        "STATUS UPDATE");
+                break;
+            case OSP_STATUS_UPDATE:
+                if(ambtc instanceof AMBTCStatusUpdate su)
+                {
+                    broadcastEvent(ambtc, DecodeEventType.STATUS, "UNIT:" + su.getUnitStatus() + " USER:" +
+                            su.getUserStatus());
+                }
+                break;
+        }
+    }
+
+    /**
+     * AMBTC Channel Grant Updates
+     */
+    private void processAMBTCChannelGrantUpdate(AMBTCMessage ambtc)
+    {
+        switch(ambtc.getHeader().getOpcode())
+        {
+            case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE:
+                if(ambtc instanceof AMBTCUnitToUnitVoiceServiceChannelGrantUpdate upd)
+                {
+                    processChannelUpdate(upd.getChannel(), upd.getServiceOptions(), upd.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+            case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE:
+                if(ambtc instanceof AMBTCTelephoneInterconnectChannelGrantUpdate upd)
+                {
+                    processChannelUpdate(upd.getChannel(), upd.getServiceOptions(), upd.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+        }
+    }
+
+    /**
+     * AMBTC Channel Grants
+     */
+    private void processAMBTCChannelGrant(AMBTCMessage ambtc)
+    {
+        switch(ambtc.getHeader().getOpcode())
+        {
+            case OSP_GROUP_DATA_CHANNEL_GRANT:
+                if(ambtc instanceof AMBTCGroupDataChannelGrant gdcg)
+                {
+                    processChannelGrant(gdcg.getChannel(), gdcg.getServiceOptions(), gdcg.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+            case OSP_GROUP_VOICE_CHANNEL_GRANT:
+                if(ambtc instanceof AMBTCGroupVoiceChannelGrant gvcg)
+                {
+                    processChannelGrant(gvcg.getChannel(), gvcg.getServiceOptions(), gvcg.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+            case OSP_INDIVIDUAL_DATA_CHANNEL_GRANT:
+                if(ambtc instanceof AMBTCIndividualDataChannelGrant idcg)
+                {
+                    processChannelGrant(idcg.getChannel(), idcg.getServiceOptions(), idcg.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+            case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT:
+                if(ambtc instanceof AMBTCTelephoneInterconnectChannelGrant ticg)
+                {
+                    processChannelGrant(ticg.getChannel(), ticg.getServiceOptions(), ticg.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+            case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT:
+                if(ambtc instanceof AMBTCUnitToUnitVoiceServiceChannelGrant uuvscg)
+                {
+                    processChannelGrant(uuvscg.getChannel(), uuvscg.getServiceOptions(), uuvscg.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
+            case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_GRANT:
+                if(ambtc instanceof AMBTCMotorolaGroupRegroupChannelGrant mgrcg)
+                {
+                    processChannelGrant(mgrcg.getChannel(), mgrcg.getServiceOptions(), mgrcg.getIdentifiers(),
+                            ambtc.getHeader().getOpcode(), ambtc.getTimestamp());
+                }
+                break;
         }
     }
 
     /**
      * Processes a Header Data Unit message and starts a new call event.
      */
-    private void processHDU(HDUMessage message)
+    private void processHDU(IMessage message)
     {
-        if(message.isValid())
+        if(message.isValid() && message instanceof HDUMessage hdu)
         {
-            HeaderData headerData = message.getHeaderData();
-
-            if(headerData.isValid())
-            {
-                closeCurrentCallEvent(message.getTimestamp());
-
-                for(Identifier identifier : headerData.getIdentifiers())
-                {
-                    //Add to the identifier collection after filtering through the patch group manager
-                    getIdentifierCollection().update(mPatchGroupManager.update(identifier));
-                }
-
-                updateCurrentCall(headerData.isEncryptedAudio() ? DecodeEventType.CALL_ENCRYPTED :
-                    DecodeEventType.CALL, null, message.getTimestamp());
-
-                return;
-            }
+            HeaderData headerData = hdu.getHeaderData();
+            ServiceOptions serviceOptions = headerData.isEncryptedAudio() ?
+                    VoiceServiceOptions.createEncrypted() : VoiceServiceOptions.createUnencrypted();
+            MutableIdentifierCollection mic = getMutableIdentifierCollection(hdu.getIdentifiers());
+            String details = headerData.isEncryptedAudio() ? headerData.getEncryptionKey().toString() : null;
+            DecodeEventType type = headerData.isEncryptedAudio() ? DecodeEventType.CALL_ENCRYPTED : DecodeEventType.CALL;
+            mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), getCurrentChannel(), type,
+                    serviceOptions, mic, message.getTimestamp(), details);
         }
 
-        broadcast(new DecoderStateEvent(this, Event.DECODE, State.ACTIVE));
+        broadcast(new DecoderStateEvent(this, Event.START, State.CALL));
     }
 
 
@@ -735,18 +754,14 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      */
     private void processLDU(P25P1Message message)
     {
-        broadcast(new DecoderStateEvent(this, Event.CONTINUATION, State.CALL));
-
         if(message instanceof LDU1Message ldu1)
         {
             LinkControlWord lcw = ldu1.getLinkControlWord();
 
             if(lcw != null && lcw.isValid())
             {
-                processLinkControl(lcw, message.getTimestamp());
+                processLC(lcw, message.getTimestamp(), false);
             }
-
-            updateCurrentCall(DecodeEventType.CALL, null, message.getTimestamp());
         }
         else if(message instanceof LDU2Message ldu2)
         {
@@ -754,23 +769,48 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
             if(esp != null && esp.isValid())
             {
-                processEncryptionSyncParameters(esp, message.getTimestamp());
+                if(esp.isEncryptedAudio())
+                {
+                    getIdentifierCollection().update(esp.getIdentifiers());
+                    mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), esp.getEncryptionKey(),
+                            message.getTimestamp());
+                }
+                else
+                {
+                    getIdentifierCollection().remove(Form.ENCRYPTION_KEY);
+                    mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), null,
+                            message.getTimestamp());
+                }
             }
-
-            updateCurrentCall(DecodeEventType.CALL, null, message.getTimestamp());
+            else
+            {
+                mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), null, message.getTimestamp());
+            }
         }
+
+        broadcast(new DecoderStateEvent(this, Event.CONTINUATION, State.CALL));
     }
 
     /**
-     * Processes a Terminator Data Unit with Link Control (TDULC) message and forwards valid
-     * Link Control Word messages for additional processing.
+     * Process Terminator Data Unit (TDU).
+     */
+    private void processTDU(P25P1Message message)
+    {
+        mTrafficChannelManager.closeP1CallEvent(getCurrentFrequency(), message.getTimestamp());
+        getIdentifierCollection().remove(IdentifierClass.USER, Role.FROM);
+        broadcast(new DecoderStateEvent(this, Event.DECODE, State.ACTIVE));
+    }
+
+    /**
+     * Process Terminator Data Unit with Link Control (TDULC) message and forwards valid Link Control Word message for
+     * additional processing.
      *
      * @param message that is an instance of a TDULC
      */
     private void processTDULC(P25P1Message message)
     {
-        closeCurrentCallEvent(message.getTimestamp());
-        broadcast(new DecoderStateEvent(this, Event.DECODE, State.ACTIVE));
+        mTrafficChannelManager.closeP1CallEvent(getCurrentFrequency(), message.getTimestamp());
+        getIdentifierCollection().remove(IdentifierClass.USER, Role.FROM);
 
         if(message instanceof TDULinkControlMessage tdulc)
         {
@@ -778,74 +818,18 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
             if(lcw != null && lcw.isValid())
             {
-                processLinkControl(lcw, message.getTimestamp());
+                //Send an ACTIVE decoder state event for everything except the CALL TERMINATION opcode which is
+                //handled by the processLC() method.
+                if(lcw.getOpcode() != LinkControlOpcode.CALL_TERMINATION_OR_CANCELLATION)
+                {
+                    //Set the state to ACTIVE while the call continues in hangtime.  The processLC() method will signal
+                    // the channel teardown.
+                    broadcast(new DecoderStateEvent(this, Event.DECODE, State.ACTIVE));
+                }
+
+                processLC(lcw, message.getTimestamp(), true);
             }
         }
-    }
-
-    /**
-     * Updates or creates a current call event.
-     *
-     * @param decodeEventType of call that will be used as an event description
-     * @param details of the call (optional)
-     * @param timestamp of the message indicating a call or continuation
-     */
-    private void updateCurrentCall(DecodeEventType decodeEventType, String details, long timestamp)
-    {
-        if(mCurrentCallEvent == null)
-        {
-            mCurrentCallEvent = P25DecodeEvent.builder(DecodeEventType.CALL, timestamp)
-                .channel(getCurrentChannel())
-                .details(details)
-                .identifiers(getIdentifierCollection().copyOf())
-                .build();
-
-            broadcast(mCurrentCallEvent);
-            broadcast(new DecoderStateEvent(this, Event.START, State.CALL));
-        }
-        else
-        {
-            mCurrentCallEvent.setIdentifierCollection(getIdentifierCollection().copyOf());
-            mCurrentCallEvent.end(timestamp);
-            broadcast(mCurrentCallEvent);
-
-            if(decodeEventType == DecodeEventType.CALL_ENCRYPTED)
-            {
-                mCurrentCallEvent.setDetails(details);
-                broadcast(new DecoderStateEvent(this, Event.CONTINUATION, State.ENCRYPTED));
-            }
-            else
-            {
-                broadcast(new DecoderStateEvent(this, Event.CONTINUATION, State.CALL));
-            }
-        }
-    }
-
-    /**
-     * Ends/closes the current call event.
-     *
-     * @param timestamp of the message that indicates the event has ended.
-     */
-    private void closeCurrentCallEvent(long timestamp)
-    {
-        if(mCurrentCallEvent != null)
-        {
-            mCurrentCallEvent.end(timestamp);
-            broadcast(mCurrentCallEvent);
-            mCurrentCallEvent = null;
-
-            //Only clear the from identifier at this point ... the channel may still be allocated to the TO talkgroup
-            getIdentifierCollection().remove(IdentifierClass.USER, Role.FROM);
-        }
-    }
-
-    /**
-     * Terminator Data Unit (TDU).
-     */
-    private void processTDU(P25P1Message message)
-    {
-        closeCurrentCallEvent(message.getTimestamp());
-        broadcast(new DecoderStateEvent(this, Event.DECODE, State.ACTIVE));
     }
 
     /**
@@ -857,7 +841,15 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(message.isValid() && message instanceof PDUMessage pdu)
         {
-            processBroadcast(pdu.getIdentifiers(), message.getTimestamp(), DecodeEventType.DATA_PACKET, pdu.toString());
+            broadcastEvent(pdu.getIdentifiers(), message.getTimestamp(), DecodeEventType.DATA_PACKET, pdu.toString());
+        }
+        else if(message.isValid() && message instanceof ResponseMessage response)
+        {
+            broadcastEvent(message.getIdentifiers(), message.getTimestamp(), DecodeEventType.RESPONSE, response.getResponseText());
+        }
+        else if(message.isValid() && message instanceof PDUSequenceMessage pdu)
+        {
+            broadcastEvent(pdu.getIdentifiers(), message.getTimestamp(), DecodeEventType.DATA_PACKET, pdu.toString());
         }
 
         broadcast(new DecoderStateEvent(this, Event.DECODE, State.DATA));
@@ -872,7 +864,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(message.isValid() && message instanceof UMBTCTelephoneInterconnectRequestExplicitDialing tired)
         {
-            processBroadcast(tired.getIdentifiers(), tired.getTimestamp(), DecodeEventType.REQUEST, "TELEPHONE INTERCONNECT:" + tired.getTelephoneNumber());
+            broadcastEvent(message.getIdentifiers(), message.getTimestamp(), DecodeEventType.REQUEST,
+                    "TELEPHONE INTERCONNECT:" + tired.getTelephoneNumber());
         }
 
         broadcast(new DecoderStateEvent(this, Event.DECODE, State.CONTROL));
@@ -887,75 +880,56 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         broadcast(new DecoderStateEvent(this, Event.DECODE, State.DATA));
 
-        if(message instanceof SNDCPPacketMessage)
+        if(message instanceof SNDCPPacketMessage sndcp)
         {
-            SNDCPPacketMessage sndcp = (SNDCPPacketMessage) message;
-            getIdentifierCollection().update(sndcp.getIdentifiers());
+            processSNDCP(sndcp);
         }
-        else if(message instanceof PacketMessage)
+        else if(message instanceof PacketMessage packetMessage)
         {
-            PacketMessage packetMessage = (PacketMessage) message;
-            getIdentifierCollection().remove(IdentifierClass.USER);
-            getIdentifierCollection().update(packetMessage.getIdentifiers());
-
             IPacket packet = packetMessage.getPacket();
 
-            if(packet instanceof IPV4Packet)
+            if(packet instanceof IPV4Packet ipv4)
             {
-                IPV4Packet ipv4 = (IPV4Packet) packet;
-
                 IPacket ipPayload = ipv4.getPayload();
 
-                if(ipPayload instanceof UDPPacket)
+                if(ipPayload instanceof UDPPacket udpPacket)
                 {
-                    UDPPacket udpPacket = (UDPPacket) ipPayload;
-
                     IPacket udpPayload = udpPacket.getPayload();
 
-                    if(udpPayload instanceof ARSPacket)
+                    if(udpPayload instanceof ARSPacket arsPacket)
                     {
-                        ARSPacket arsPacket = (ARSPacket) udpPayload;
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
-                        MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                        for(Identifier identifier : packet.getIdentifiers())
-                        {
-                            ic.update(identifier);
-                        }
-
-                        DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.AUTOMATIC_REGISTRATION_SERVICE, message.getTimestamp())
+                        DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.AUTOMATIC_REGISTRATION_SERVICE,
+                                        message.getTimestamp())
                                 .channel(getCurrentChannel())
-                                .identifiers(ic)
+                                .identifiers(mic)
                                 .details(arsPacket + " " + ipv4)
                                 .build();
 
                         broadcast(packetEvent);
                     }
-                    else if(udpPayload instanceof MCGPPacket)
+                    else if(udpPayload instanceof MCGPPacket mcgp)
                     {
-                        MCGPPacket mcgpPacket = (MCGPPacket) udpPayload;
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
-                        MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                        for(Identifier identifier : packet.getIdentifiers())
-                        {
-                            ic.update(identifier);
-                        }
-
-                        DecodeEvent cellocatorEvent = P25DecodeEvent.builder(DecodeEventType.CELLOCATOR, message.getTimestamp())
+                        DecodeEvent cellocatorEvent = P25DecodeEvent.builder(DecodeEventType.CELLOCATOR,
+                                        message.getTimestamp())
                                 .channel(getCurrentChannel())
-                                .identifiers(ic)
-                                .details(mcgpPacket + " " + ipv4)
+                                .identifiers(mic)
+                                .details(mcgp + " " + ipv4)
                                 .build();
 
                         broadcast(cellocatorEvent);
                     }
                     else if(udpPayload instanceof LRRPPacket lrrpPacket)
                     {
-                        MutableIdentifierCollection ic = new MutableIdentifierCollection(packet.getIdentifiers());
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
                         DecodeEvent lrrpEvent = P25DecodeEvent.builder(DecodeEventType.LRRP, message.getTimestamp())
                                 .channel(getCurrentChannel())
                                 .details(lrrpPacket + " " + ipv4)
-                                .identifiers(ic)
+                                .identifiers(mic)
                                 .protocol(Protocol.LRRP)
                                 .build();
 
@@ -968,7 +942,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                             PlottableDecodeEvent plottableDecodeEvent = PlottableDecodeEvent
                                     .plottableBuilder(DecodeEventType.GPS, message.getTimestamp())
                                     .channel(getCurrentChannel())
-                                    .identifiers(ic)
+                                    .identifiers(mic)
                                     .protocol(Protocol.LRRP)
                                     .location(geoPosition)
                                     .build();
@@ -978,15 +952,11 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     }
                     else
                     {
-                        MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                        for(Identifier identifier : packet.getIdentifiers())
-                        {
-                            ic.update(identifier);
-                        }
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
                         DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.UDP_PACKET, message.getTimestamp())
                                 .channel(getCurrentChannel())
-                                .identifiers(ic)
+                                .identifiers(mic)
                                 .details(ipv4.toString())
                                 .build();
 
@@ -995,15 +965,11 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 else if(ipPayload instanceof ICMPPacket)
                 {
-                    MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                    for(Identifier identifier : packet.getIdentifiers())
-                    {
-                        ic.update(identifier);
-                    }
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
                     DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.ICMP_PACKET, message.getTimestamp())
                             .channel(getCurrentChannel())
-                            .identifiers(ic)
+                            .identifiers(mic)
                             .details(ipv4.toString())
                             .build();
 
@@ -1011,15 +977,11 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 else
                 {
-                    MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                    for(Identifier identifier : packet.getIdentifiers())
-                    {
-                        ic.update(identifier);
-                    }
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
                     DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.IP_PACKET, message.getTimestamp())
                             .channel(getCurrentChannel())
-                            .identifiers(ic)
+                            .identifiers(mic)
                             .details(ipv4.toString())
                             .build();
 
@@ -1028,15 +990,11 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
             }
             else if(packet instanceof UnknownPacket)
             {
-                MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                for(Identifier identifier : packet.getIdentifiers())
-                {
-                    ic.update(identifier);
-                }
+                MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
 
                 DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.UNKNOWN_PACKET, message.getTimestamp())
                         .channel(getCurrentChannel())
-                        .identifiers(ic)
+                        .identifiers(mic)
                         .details(packet.toString())
                         .build();
 
@@ -1056,93 +1014,91 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
         if(message.isValid() && message instanceof SNDCPPacketMessage sndcpPacket)
         {
-            MutableIdentifierCollection ic = getMutableIdentifierCollection(sndcpPacket.getIdentifiers());
-
-            switch(sndcpPacket.getSNDCPPacketHeader().getPDUType())
+            switch(sndcpPacket.getSNDCPMessage().getPDUType())
             {
                 case OUTBOUND_SNDCP_ACTIVATE_TDS_CONTEXT_ACCEPT:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.RESPONSE, "SNDCP ACTIVATE TDS CONTEXT ACCEPT");
                     break;
                 case OUTBOUND_SNDCP_DEACTIVATE_TDS_CONTEXT_ACCEPT:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.RESPONSE, "SNDCP DEACTIVATE TDS CONTEXT ACCEPT");
                     break;
                 case OUTBOUND_SNDCP_DEACTIVATE_TDS_CONTEXT_REQUEST:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.REQUEST, "SNDCP DEACTIVATE TDS CONTEXT");
                     break;
                 case OUTBOUND_SNDCP_ACTIVATE_TDS_CONTEXT_REJECT:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.RESPONSE, "SNDCP ACTIVATE TDS CONTEXT REJECT");
                     break;
+                case OUTBOUND_SNDCP_RF_UNCONFIRMED_DATA:
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                            DecodeEventType.REQUEST, sndcpPacket.toString());
+                    break;
+                case OUTBOUND_SNDCP_RF_CONFIRMED_DATA:
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                            DecodeEventType.REQUEST, sndcpPacket.toString());
+                    break;
+                case OUTBOUND_UNKNOWN:
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                            DecodeEventType.REQUEST, sndcpPacket.toString());
+                    break;
                 case INBOUND_SNDCP_ACTIVATE_TDS_CONTEXT_REQUEST:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.REQUEST, "SNDCP ACTIVATE TDS CONTEXT");
                     break;
                 case INBOUND_SNDCP_DEACTIVATE_TDS_CONTEXT_ACCEPT:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.RESPONSE, "SNDCP DEACTIVATE TDS CONTEXT ACCEPT");
                     break;
                 case INBOUND_SNDCP_DEACTIVATE_TDS_CONTEXT_REQUEST:
-                    processBroadcast(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
                             DecodeEventType.REQUEST, "SNDCP DEACTIVATE TDS CONTEXT");
+                    break;
+                case INBOUND_SNDCP_RF_CONFIRMED_DATA:
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                            DecodeEventType.REQUEST, sndcpPacket.toString());
+                    break;
+                case INBOUND_UNKNOWN:
+                    broadcastEvent(sndcpPacket.getIdentifiers(), message.getTimestamp(),
+                            DecodeEventType.REQUEST, sndcpPacket.toString());
                     break;
             }
         }
     }
 
     /**
-     * Trunking Signalling Block (TSBK)
-     *
-     * @param message
+     * Trunking Signalling Block (TSBK) messages
      */
     private void processTSBK(P25P1Message message)
     {
         broadcast(new DecoderStateEvent(this, Event.DECODE, State.CONTROL));
 
-        if(message.isValid() && message instanceof TSBKMessage)
+        if(message.isValid() && message instanceof TSBKMessage tsbk)
         {
-            TSBKMessage tsbk = (TSBKMessage)message;
-
             switch(tsbk.getOpcode())
             {
                 //Channel Grant messages
                 case OSP_GROUP_DATA_CHANNEL_GRANT:
-                    processTSBKDataChannelGrant(tsbk);
-                    break;
                 case OSP_GROUP_VOICE_CHANNEL_GRANT:
-                    processTSBKGroupVoiceChannelGrant(tsbk);
-                    break;
-                case OSP_GROUP_VOICE_CHANNEL_GRANT_UPDATE:
-                    processTSBKGroupVoiceChannelGrantUpdate(tsbk);
-                    break;
-                case OSP_GROUP_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
-                    processTSBKGroupVoiceChannelGrantUpdateExplicit(tsbk);
-                    break;
                 case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT:
-                    processTSBKUnitToUnitVoiceChannelGrant(tsbk);
-                    break;
-                case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE:
-                    processTSBKUnitToUnitVoiceChannelGrantUpdate(tsbk);
-                    break;
                 case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT:
-                    processTSBKTelephoneInterconnectVoiceChannelGrant(tsbk);
-                    break;
-                case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE:
-                    processTSBKTelephoneInterconnectVoiceChannelGrantUpdate(tsbk);
-                    break;
                 case OSP_SNDCP_DATA_CHANNEL_GRANT:
-                    processTSBKSndcpDataChannelGrant(tsbk);
-                    break;
                 case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_GRANT:
-                    processTSBKMotorolaOspPatchGroupChannelGrant(tsbk);
-                    break;
-                case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_UPDATE:
-                    processTSBKMotorolaOspPatchGroupChannelGrantUpdate(tsbk);
+                    processTSBKChannelGrant(tsbk);
                     break;
 
-                //Network Configuration Messages
+                //Channel Grant Update messages
+                case OSP_GROUP_VOICE_CHANNEL_GRANT_UPDATE:
+                case OSP_GROUP_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
+                case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE:
+                case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE:
+                case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_UPDATE:
+                    processTSBKChannelGrantUpdate(tsbk);
+                    break;
+
+                    //Network Configuration Messages
                 case MOTOROLA_OSP_TRAFFIC_CHANNEL_ID:
                 case MOTOROLA_OSP_SYSTEM_LOADING:
                 case MOTOROLA_OSP_BASE_STATION_ID:
@@ -1155,7 +1111,6 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case OSP_TDMA_SYNC_BROADCAST:
                 case OSP_SYSTEM_SERVICE_BROADCAST:
                 case OSP_SECONDARY_CONTROL_CHANNEL_BROADCAST:
-                case OSP_RFSS_STATUS_BROADCAST:
                 case OSP_NETWORK_STATUS_BROADCAST:
                 case OSP_ADJACENT_STATUS_BROADCAST:
                 case OSP_IDENTIFIER_UPDATE:
@@ -1163,34 +1118,55 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case OSP_PROTECTION_PARAMETER_UPDATE:
                     mNetworkConfigurationMonitor.process(tsbk);
                     break;
+                case OSP_RFSS_STATUS_BROADCAST:
+                    if(tsbk instanceof RFSSStatusBroadcast rfss && mChannel.isStandardChannel() &&
+                            (getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&
+                            rfss.getChannel().getDownlinkFrequency() > 0)
+                    {
+                        setCurrentChannel(rfss.getChannel());
+                        DecoderLogicalChannelNameIdentifier channelID =
+                                DecoderLogicalChannelNameIdentifier.create(rfss.getChannel().toString(), Protocol.APCO25);
+                        getIdentifierCollection().update(channelID);
+                        setCurrentFrequency(rfss.getChannel().getDownlinkFrequency());
+                        FrequencyConfigurationIdentifier frequencyID = FrequencyConfigurationIdentifier
+                                .create(rfss.getChannel().getDownlinkFrequency());
+                        getIdentifierCollection().update(frequencyID);
+                    }
+                    mNetworkConfigurationMonitor.process(tsbk);
+                    break;
 
                 case OSP_UNIT_TO_UNIT_ANSWER_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.PAGE, "UNIT-TO-UNIT ANSWER REQUEST");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.PAGE,
+                            "UNIT-TO-UNIT ANSWER REQUEST");
                     break;
                 case OSP_TELEPHONE_INTERCONNECT_ANSWER_REQUEST:
-                    processTSBKTelephoneInterconnectAnswerRequest(tsbk);
+                    if(tsbk instanceof TelephoneInterconnectAnswerRequest tiar)
+                    {
+                        broadcastEvent(tsbk, DecodeEventType.PAGE, "TELEPHONE ANSWER REQUEST: " +
+                                tiar.getTelephoneNumber());
+                    }
                     break;
                 case OSP_SNDCP_DATA_PAGE_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.PAGE, "SNDCP DATA PAGE REQUEST");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.PAGE,
+                            "SNDCP DATA PAGE REQUEST");
                     break;
                 case OSP_STATUS_UPDATE:
-                    processTSBKStatusUpdate(tsbk);
-                    break;
                 case OSP_STATUS_QUERY:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.QUERY, "STATUS");
+                    processTSBKStatus(tsbk);
                     break;
                 case OSP_MESSAGE_UPDATE:
-                    if(tsbk instanceof MessageUpdate)
+                    if(tsbk instanceof MessageUpdate mu)
                     {
-                        MessageUpdate mu = (MessageUpdate)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.SDM, "MSG:" + mu.getShortDataMessage());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.SDM, "MSG:" +
+                                mu.getShortDataMessage());
                     }
                     break;
                 case OSP_RADIO_UNIT_MONITOR_COMMAND:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND, "RADIO UNIT MONITOR");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND,
+                            "RADIO UNIT MONITOR");
                     break;
                 case OSP_CALL_ALERT:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.PAGE, "CALL ALERT");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.PAGE, "CALL ALERT");
                     break;
                 case OSP_ACKNOWLEDGE_RESPONSE:
                     processTSBKAcknowledgeResponse(tsbk);
@@ -1208,7 +1184,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     processTSBKGroupAffiliationResponse(tsbk);
                     break;
                 case OSP_GROUP_AFFILIATION_QUERY:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.QUERY, "GROUP AFFILIATION");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.QUERY,
+                            "GROUP AFFILIATION");
                     break;
                 case OSP_LOCATION_REGISTRATION_RESPONSE:
                     processTSBKLocationRegistrationResponse(tsbk);
@@ -1217,20 +1194,22 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     processTSBKUnitRegistrationResponse(tsbk);
                     break;
                 case OSP_UNIT_REGISTRATION_COMMAND:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND, "UNIT REGISTRATION");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND,
+                            "UNIT REGISTRATION");
                     break;
                 case OSP_AUTHENTICATION_COMMAND:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND, "AUTHENTICATE");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND,
+                            "AUTHENTICATE");
                     break;
                 case OSP_UNIT_DEREGISTRATION_ACKNOWLEDGE:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.DEREGISTER, "ACKNOWLEDGE UNIT DE-REGISTRATION");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.DEREGISTER,
+                            "ACKNOWLEDGE UNIT DE-REGISTRATION");
                     break;
                 case OSP_ROAMING_ADDRESS_COMMAND:
-                    if(tsbk instanceof RoamingAddressCommand)
+                    if(tsbk instanceof RoamingAddressCommand rac)
                     {
-                        RoamingAddressCommand rac = (RoamingAddressCommand)tsbk;
-
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND, rac.getStackOperation() + " ROAMING ADDRESS");
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.COMMAND,
+                                rac.getStackOperation() + " ROAMING ADDRESS");
                     }
                     break;
 
@@ -1259,47 +1238,48 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                 //STANDARD - INBOUND OPCODES
                 case ISP_GROUP_VOICE_SERVICE_REQUEST:
-                    if(tsbk instanceof GroupVoiceServiceRequest)
+                    if(tsbk instanceof GroupVoiceServiceRequest gvsr)
                     {
-                        GroupVoiceServiceRequest gvsr = (GroupVoiceServiceRequest)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "GROUP VOICE SERVICE " + gvsr.getServiceOptions());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                                "GROUP VOICE SERVICE " + gvsr.getServiceOptions());
                     }
                     break;
                 case ISP_UNIT_TO_UNIT_VOICE_SERVICE_REQUEST:
-                    if(tsbk instanceof UnitToUnitVoiceServiceRequest)
+                    if(tsbk instanceof UnitToUnitVoiceServiceRequest uuvsr)
                     {
-                        UnitToUnitVoiceServiceRequest uuvsr = (UnitToUnitVoiceServiceRequest)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "UNIT-2-UNIT VOICE SERVICE " + uuvsr.getServiceOptions());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                                "UNIT-2-UNIT VOICE SERVICE " + uuvsr.getServiceOptions());
                     }
                     break;
                 case ISP_UNIT_TO_UNIT_ANSWER_RESPONSE:
                     processTSBKUnitToUnitAnswerResponse(tsbk);
                     break;
                 case ISP_TELEPHONE_INTERCONNECT_PSTN_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "TELEPHONE INTERCONNECT");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "TELEPHONE INTERCONNECT");
                     break;
                 case ISP_TELEPHONE_INTERCONNECT_ANSWER_RESPONSE:
                     processTSBKTelephoneInterconnectAnswerResponse(tsbk);
                     break;
                 case ISP_INDIVIDUAL_DATA_SERVICE_REQUEST:
-                    if(tsbk instanceof IndividualDataServiceRequest)
+                    if(tsbk instanceof IndividualDataServiceRequest idsr)
                     {
-                        IndividualDataServiceRequest idsr = (IndividualDataServiceRequest)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "INDIVIDUAL DATA SERVICE " + idsr.getServiceOptions());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                                "INDIVIDUAL DATA SERVICE " + idsr.getServiceOptions());
                     }
                     break;
                 case ISP_GROUP_DATA_SERVICE_REQUEST:
-                    if(tsbk instanceof GroupDataServiceRequest)
+                    if(tsbk instanceof GroupDataServiceRequest gdsr)
                     {
-                        GroupDataServiceRequest gdsr = (GroupDataServiceRequest)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "GROUP DATA SERVICE " + gdsr.getServiceOptions());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                                "GROUP DATA SERVICE " + gdsr.getServiceOptions());
                     }
                     break;
                 case ISP_SNDCP_DATA_CHANNEL_REQUEST:
-                    if(tsbk instanceof SNDCPDataChannelRequest)
+                    if(tsbk instanceof SNDCPDataChannelRequest sdcr)
                     {
-                        SNDCPDataChannelRequest sdcr = (SNDCPDataChannelRequest)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "SNDCP DATA CHANNEL " + sdcr.getDataServiceOptions());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                                "SNDCP DATA CHANNEL " + sdcr.getDataServiceOptions());
                     }
                     break;
                 case ISP_SNDCP_DATA_PAGE_RESPONSE:
@@ -1309,69 +1289,95 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     processTSBKSndcpReconnectRequest(tsbk);
                     break;
                 case ISP_STATUS_UPDATE_REQUEST:
-                    processTSBKStatusUpdateRequest(tsbk);
-                    break;
                 case ISP_STATUS_QUERY_RESPONSE:
-                    processTSBKStatusQueryResponse(tsbk);
-                    break;
                 case ISP_STATUS_QUERY_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.QUERY, "UNIT AND USER STATUS");
+                    processTSBKStatus(tsbk);
                     break;
                 case ISP_MESSAGE_UPDATE_REQUEST:
-                    if(tsbk instanceof MessageUpdateRequest)
+                    if(tsbk instanceof MessageUpdateRequest mur)
                     {
-                        MessageUpdateRequest mur = (MessageUpdateRequest)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.SDM, "MESSAGE:" + mur.getShortDataMessage());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.SDM,
+                                "MESSAGE:" + mur.getShortDataMessage());
                     }
                     break;
                 case ISP_RADIO_UNIT_MONITOR_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "RADIO UNIT MONITOR");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "RADIO UNIT MONITOR");
                     break;
                 case ISP_CALL_ALERT_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "CALL ALERT");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "CALL ALERT");
                     break;
                 case ISP_UNIT_ACKNOWLEDGE_RESPONSE:
-                    if(tsbk instanceof UnitAcknowledgeResponse)
+                    if(tsbk instanceof UnitAcknowledgeResponse uar)
                     {
-                        UnitAcknowledgeResponse uar = (UnitAcknowledgeResponse)tsbk;
-                        processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.RESPONSE, "UNIT ACKNOWLEDGE:" + uar.getAcknowledgedServiceType().getDescription());
+                        broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.RESPONSE,
+                                "UNIT ACKNOWLEDGE:" + uar.getAcknowledgedServiceType().getDescription());
                     }
                     break;
                 case ISP_CANCEL_SERVICE_REQUEST:
-                    processTSBKCancelServiceRequest(tsbk);
+                    if(tsbk instanceof CancelServiceRequest csr)
+                    {
+                        broadcastEvent(tsbk, DecodeEventType.REQUEST, "CANCEL SERVICE:" + csr.getServiceType() +
+                            " REASON:" + csr.getCancelReason() + (csr.hasAdditionalInformation() ? " INFO:" +
+                                csr.getAdditionalInformation() : ""));
+                    }
                     break;
                 case ISP_EXTENDED_FUNCTION_RESPONSE:
-                    processTSBKExtendedFunctionResponse(tsbk);
+                    if(tsbk instanceof ExtendedFunctionResponse efr)
+                    {
+                        broadcastEvent(tsbk, DecodeEventType.RESPONSE, "EXTENDED FUNCTION:" +
+                                efr.getExtendedFunction() + " ARGUMENTS:" + efr.getArguments());
+                    }
                     break;
                 case ISP_EMERGENCY_ALARM_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "EMERGENCY ALARM");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "EMERGENCY ALARM");
                     break;
                 case ISP_GROUP_AFFILIATION_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "GROUP AFFILIATION");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "GROUP AFFILIATION");
                     break;
                 case ISP_GROUP_AFFILIATION_QUERY_RESPONSE:
-                    processTSBKGroupAffiliationQueryResponse(tsbk);
+                    if(tsbk instanceof GroupAffiliationQueryResponse gaqr)
+                    {
+                        broadcastEvent(tsbk, DecodeEventType.RESPONSE, "AFFILIATION - GROUP:" +
+                            gaqr.getGroupAddress() + " ANNOUNCEMENT GROUP:" + gaqr.getAnnouncementGroupAddress());
+                    }
                     break;
                 case ISP_UNIT_DE_REGISTRATION_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.DEREGISTER, "UNIT DE-REGISTRATION REQUEST");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.DEREGISTER,
+                            "UNIT DE-REGISTRATION REQUEST");
                     break;
                 case ISP_UNIT_REGISTRATION_REQUEST:
-                    processTSBKUnitRegistrationRequest(tsbk);
+                    if(tsbk instanceof UnitRegistrationRequest urr)
+                    {
+                        broadcastEvent(tsbk, DecodeEventType.REGISTER, (urr.isEmergency() ? "EMERGENCY " : "") +
+                            "UNIT REGISTRATION REQUEST - CAPABILITY:" + urr.getCapability());
+                    }
                     break;
                 case ISP_LOCATION_REGISTRATION_REQUEST:
-                    processTSBKLocationRegistrationRequest(tsbk);
+                    if(tsbk instanceof LocationRegistrationRequest lrr)
+                    {
+                        broadcastEvent(tsbk, DecodeEventType.REGISTER, (lrr.isEmergency() ? "EMERGENCY " : "") +
+                            "LOCATION REGISTRATION REQUEST - CAPABILITY:" + lrr.getCapability());
+                    }
                     break;
                 case ISP_PROTECTION_PARAMETER_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "ENCRYPTION PARAMETERS");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "ENCRYPTION PARAMETERS");
                     break;
                 case ISP_IDENTIFIER_UPDATE_REQUEST:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST, "FREQUENCY BAND DETAILS");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "FREQUENCY BAND DETAILS");
                     break;
                 case ISP_ROAMING_ADDRESS_REQUEST:
-                    processTSBKRoamingAddressRequest(tsbk);
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.REQUEST,
+                            "ROAMING ADDRESS");
                     break;
                 case ISP_ROAMING_ADDRESS_RESPONSE:
-                    processBroadcast(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.RESPONSE, "ROAMING ADDRESS");
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.RESPONSE,
+                            "ROAMING ADDRESS");
                     break;
                 case MOTOROLA_OSP_ACKNOWLEDGE_RESPONSE:
                     processTSBKAcknowledgeResponse(tsbk);
@@ -1385,88 +1391,55 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case MOTOROLA_OSP_QUEUED_RESPONSE:
                     processTSBKQueuedResponse(tsbk);
                 default:
-//                    mLog.debug("Unrecognized TSBK Opcode: " + tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() +
-//                        " OPCODE:" + tsbk.getOpcodeNumber());
+                    LOGGING_SUPPRESSOR.info(tsbk.getOpcode().name(), 1, "Unrecognized TSBK Opcode: " +
+                        tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber());
                     break;
             }
         }
     }
 
-    private void processTSBKRoamingAddressRequest(TSBKMessage tsbk)
+    /**
+     * TSBK Status messaging
+     */
+    private void processTSBKStatus(TSBKMessage tsbk)
     {
-        broadcast(P25DecodeEvent.builder(DecodeEventType.REQUEST, tsbk.getTimestamp())
-            .channel(getCurrentChannel())
-            .details("ROAMING ADDRESS")
-            .identifiers(new IdentifierCollection(tsbk.getIdentifiers()))
-            .build());
-    }
-
-    private void processTSBKLocationRegistrationRequest(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof LocationRegistrationRequest lrr)
+        switch(tsbk.getOpcode())
         {
-            processBroadcast(tsbk, DecodeEventType.REGISTER,
-                    (lrr.isEmergency() ? "EMERGENCY " : "") +
-                    "LOCATION REGISTRATION REQUEST - CAPABILITY:" + lrr.getCapability());
-        }
-    }
-
-    private void processTSBKUnitRegistrationRequest(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof UnitRegistrationRequest urr)
-        {
-            processBroadcast(tsbk, DecodeEventType.REGISTER,
- 		(urr.isEmergency() ? "EMERGENCY " : "") +
-                    "UNIT REGISTRATION REQUEST - CAPABILITY:" + urr.getCapability());
-        }
-    }
-
-    private void processTSBKGroupAffiliationQueryResponse(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof GroupAffiliationQueryResponse gaqr)
-        {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
- 		"AFFILIATION - GROUP:" + gaqr.getGroupAddress() +
-                    " ANNOUNCEMENT GROUP:" + gaqr.getAnnouncementGroupAddress());
-        }
-    }
-
-    private void processTSBKExtendedFunctionResponse(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof ExtendedFunctionResponse efr)
-        {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
- 		"EXTENDED FUNCTION:" + efr.getExtendedFunction() +
-                    " ARGUMENTS:" + efr.getArguments());
-        }
-    }
-
-    private void processTSBKCancelServiceRequest(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof CancelServiceRequest csr)
-        {
-            processBroadcast(tsbk, DecodeEventType.REQUEST,
- 		"CANCEL SERVICE:" + csr.getServiceType() +
-                    " REASON:" + csr.getCancelReason() + (csr.hasAdditionalInformation() ?
-                    " INFO:" + csr.getAdditionalInformation() : ""));
-        }
-    }
-
-    private void processTSBKStatusQueryResponse(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof StatusQueryResponse sqr)
-        {
-            processBroadcast(tsbk, DecodeEventType.STATUS,
-        "UNIT:" + sqr.getUnitStatus() + " USER:" + sqr.getUserStatus());
-        }
-    }
-
-    private void processTSBKStatusUpdateRequest(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof StatusUpdateRequest sur)
-        {
-            processBroadcast(tsbk, DecodeEventType.STATUS,
- 		"UNIT:" + sur.getUnitStatus() + " USER:" + sur.getUserStatus());
+            case ISP_STATUS_UPDATE_REQUEST:
+                if(tsbk instanceof StatusUpdateRequest sur)
+                {
+                    broadcastEvent(tsbk, DecodeEventType.STATUS, "UNIT:" + sur.getUnitStatus() + " USER:" +
+                            sur.getUserStatus());
+                }
+                break;
+            case ISP_STATUS_QUERY_RESPONSE:
+                if(tsbk instanceof StatusQueryResponse sqr)
+                {
+                    broadcastEvent(tsbk, DecodeEventType.STATUS, "UNIT:" + sqr.getUnitStatus() + " USER:" +
+                            sqr.getUserStatus());
+                }
+                break;
+            case ISP_STATUS_QUERY_REQUEST:
+                if(tsbk instanceof StatusQueryRequest sqr)
+                {
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.QUERY,
+                            "UNIT AND USER STATUS");
+                }
+                break;
+            case OSP_STATUS_QUERY:
+                if(tsbk instanceof StatusQuery sq)
+                {
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.QUERY,
+                            "UNIT AND USER STATUS");
+                }
+                break;
+            case OSP_STATUS_UPDATE:
+                if(tsbk instanceof StatusUpdate su)
+                {
+                    broadcastEvent(tsbk, DecodeEventType.STATUS,
+                            "UNIT:" + su.getUnitStatus() + " USER:" + su.getUserStatus());
+                }
+                break;
         }
     }
 
@@ -1474,7 +1447,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof SNDCPReconnectRequest srr)
         {
-            processBroadcast(tsbk, DecodeEventType.REQUEST,
+            broadcastEvent(tsbk, DecodeEventType.REQUEST,
  		"SNDCP RECONNECT " + (srr.hasDataToSend() ? "- DATA TO SEND " : "")
                     + srr.getDataServiceOptions())
 ;
@@ -1485,7 +1458,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof SNDCPDataPageResponse sdpr)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE,
  		sdpr.getAnswerResponse() + " SNDCP DATA " + sdpr.getDataServiceOptions());
         }
     }
@@ -1494,7 +1467,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof TelephoneInterconnectAnswerResponse tiar)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE,
  		tiar.getAnswerResponse() + " TELEPHONE INTERCONNECT " + tiar.getServiceOptions());
         }
     }
@@ -1503,7 +1476,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof UnitToUnitVoiceServiceAnswerResponse uuvsar)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE,
  		uuvsar.getAnswerResponse() + " UNIT-2-UNIT VOICE SERVICE " + uuvsar.getServiceOptions());
         }
     }
@@ -1512,7 +1485,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof UnitRegistrationResponse urr)
         {
-            processBroadcast(tsbk, DecodeEventType.REGISTER, urr.getResponse() + " UNIT REGISTRATION - UNIT ID:" + urr.getRegisteredRadio());
+            broadcastEvent(tsbk, DecodeEventType.REGISTER, urr.getResponse() + " UNIT REGISTRATION - UNIT ID:" + urr.getRegisteredRadio());
         }
     }
 
@@ -1520,7 +1493,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof LocationRegistrationResponse lrr)
         {
-            processBroadcast(tsbk, DecodeEventType.REGISTER,
+            broadcastEvent(tsbk, DecodeEventType.REGISTER,
  		lrr.getResponse() + " LOCATION REGISTRATION - GROUP:" + lrr.getGroupAddress());
         }
     }
@@ -1529,7 +1502,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof GroupAffiliationResponse gar)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE, gar.getAffiliationResponse() +
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, gar.getAffiliationResponse() +
                     " AFFILIATION GROUP: " + gar.getGroupAddress() +
                     (gar.isGlobalAffiliation() ? " (GLOBAL)" : " (LOCAL)") +
                     " ANNOUNCEMENT GROUP:" + gar.getAnnouncementGroupAddress());
@@ -1540,13 +1513,13 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof DenyResponse dr)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE,
  		"DENY: " + dr.getDeniedServiceType().getDescription() +
                     " REASON: " + dr.getDenyReason() + " - INFO: " + dr.getAdditionalInfo());
         }
         else if(tsbk instanceof MotorolaDenyResponse mdr)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE, "DENY: " + mdr.getDeniedServiceType().getDescription() + " REASON: " + mdr.getDenyReason() + " - INFO: " + mdr.getAdditionalInfo());
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "DENY: " + mdr.getDeniedServiceType().getDescription() + " REASON: " + mdr.getDenyReason() + " - INFO: " + mdr.getAdditionalInfo());
         }
     }
 
@@ -1554,23 +1527,23 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof ExtendedFunctionCommand efc)
         {
-            processBroadcast(tsbk, DecodeEventType.COMMAND, "FUNCTION: " + efc.getExtendedFunction() + " ARGUMENTS:" + efc.getArguments());
+            broadcastEvent(tsbk, DecodeEventType.COMMAND, "FUNCTION: " + efc.getExtendedFunction() + " ARGUMENTS:" + efc.getArguments());
         }
         else if(tsbk instanceof MotorolaExtendedFunctionCommand mefc)
         {
             if(mefc.isSupergroupCreate())
             {
                 mPatchGroupManager.addPatchGroup(mefc.getSuperGroup());
-                processBroadcast(tsbk, DecodeEventType.COMMAND, "CREATE SUPERGROUP:" + mefc.getSuperGroup());
+                broadcastEvent(tsbk, DecodeEventType.COMMAND, "CREATE SUPERGROUP:" + mefc.getSuperGroup());
             }
             else if(mefc.isSupergroupCancel())
             {
                 mPatchGroupManager.removePatchGroup(mefc.getSuperGroup());
-                processBroadcast(tsbk, DecodeEventType.COMMAND, "CANCEL SUPERGROUP:" + mefc.getSuperGroup());
+                broadcastEvent(tsbk, DecodeEventType.COMMAND, "CANCEL SUPERGROUP:" + mefc.getSuperGroup());
             }
             else
             {
-                processBroadcast(tsbk, DecodeEventType.COMMAND, "FUNCTION CLASS: " + mefc.getFunctionClass() + " OPERAND:" + mefc.getFunctionOperand() + " ARGUMENTS:" + mefc.getFunctionArguments());
+                broadcastEvent(tsbk, DecodeEventType.COMMAND, "FUNCTION CLASS: " + mefc.getFunctionClass() + " OPERAND:" + mefc.getFunctionOperand() + " ARGUMENTS:" + mefc.getFunctionArguments());
             }
         }
 
@@ -1580,14 +1553,14 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof QueuedResponse qr)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
- 		"QUEUED: " + qr.getQueuedResponseServiceType().getDescription() +
-                    " REASON: " + qr.getQueuedResponseReason() +
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "QUEUED: " +
+                    qr.getQueuedResponseServiceType().getDescription() + " REASON: " + qr.getQueuedResponseReason() +
                     " INFO: " + qr.getAdditionalInfo());
         }
         else if(tsbk instanceof MotorolaQueuedResponse mqr)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE, "QUEUED: " + mqr.getQueuedServiceType().getDescription() + " REASON: " + mqr.getQueuedResponseReason() + " INFO: " + mqr.getAdditionalInfo());
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "QUEUED: " + mqr.getQueuedServiceType().getDescription() +
+                    " REASON: " + mqr.getQueuedResponseReason() + " INFO: " + mqr.getAdditionalInfo());
         }
     }
 
@@ -1595,264 +1568,165 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(tsbk instanceof AcknowledgeResponse ar)
         {
-            processBroadcast(tsbk, DecodeEventType.RESPONSE,
- 		"ACKNOWLEDGE " + ar.getAcknowledgedServiceType().getDescription());
+            broadcastEvent(tsbk, DecodeEventType.RESPONSE, "ACKNOWLEDGE " + ar.getAcknowledgedService());
         }
         else if(tsbk instanceof MotorolaAcknowledgeResponse mar)
         {
-            processBroadcast(tsbk, DecodeEventType.ACKNOWLEDGE, "ACK:" + mar.getAcknowledgedService());
-        }
-    }
-
-    private void processTSBKStatusUpdate(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof StatusUpdate su)
-        {
-            processBroadcast(tsbk, DecodeEventType.STATUS,
- 		"UNIT:" + su.getUnitStatus() + " USER:" + su.getUserStatus());
-        }
-    }
-
-    private void processTSBKTelephoneInterconnectAnswerRequest(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof TelephoneInterconnectAnswerRequest tiar)
-        {
-            processBroadcast(tsbk, DecodeEventType.PAGE,
- 		"TELEPHONE ANSWER REQUEST: " + tiar.getTelephoneNumber());
-        }
-    }
-
-    private void processTSBKMotorolaOspPatchGroupChannelGrantUpdate(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof MotorolaGroupRegroupChannelUpdate pgvcgu)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiersPG1 = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-            identifiersPG1.remove(IdentifierClass.USER);
-            identifiersPG1.update(mPatchGroupManager.update(pgvcgu.getPatchGroup1()));
-
-            processChannelGrant(pgvcgu.getChannel1(), null, identifiersPG1,
-                    tsbk.getOpcode(), pgvcgu.getTimestamp());
-
-            if(pgvcgu.hasPatchGroup2())
-            {
-                //Make a copy of current identifiers and remove current user identifiers and replace from message
-                MutableIdentifierCollection identifiersPG2 = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                identifiersPG2.remove(IdentifierClass.USER);
-                identifiersPG2.update(mPatchGroupManager.update(pgvcgu.getPatchGroup2()));
-
-                processChannelGrant(pgvcgu.getChannel2(), null,
-                        identifiersPG2, tsbk.getOpcode(), pgvcgu.getTimestamp());
-            }
-        }
-    }
-
-    private void processTSBKMotorolaOspPatchGroupChannelGrant(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof MotorolaGroupRegroupChannelGrant mgrcg)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-            identifiers.remove(IdentifierClass.USER);
-            for(Identifier identifier : mgrcg.getIdentifiers())
-            {
-                identifiers.update(mPatchGroupManager.update(identifier));
-            }
-
-            processChannelGrant(mgrcg.getChannel(), mgrcg.getServiceOptions(),
-                    identifiers, tsbk.getOpcode(), mgrcg.getTimestamp());
-        }
-    }
-
-    private void processTSBKTelephoneInterconnectVoiceChannelGrantUpdate(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof TelephoneInterconnectVoiceChannelGrantUpdate tivcgu)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = getMutableIdentifierCollection(tivcgu.getIdentifiers());
-
-            processChannelGrant(tivcgu.getChannel(), tivcgu.getServiceOptions(),
-                    identifiers, tsbk.getOpcode(), tivcgu.getTimestamp());
-        }
-    }
-
-    private void processTSBKSndcpDataChannelGrant(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof SNDCPDataChannelGrant dcg)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = getMutableIdentifierCollection(dcg.getIdentifiers());
-
-            processChannelGrant(dcg.getChannel(), dcg.getServiceOptions(),
-                    identifiers, tsbk.getOpcode(), dcg.getTimestamp());
-        }
-    }
-
-    private void processTSBKTelephoneInterconnectVoiceChannelGrant(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof TelephoneInterconnectVoiceChannelGrant tivcg)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = getMutableIdentifierCollection(tivcg.getIdentifiers());
-
-            processChannelGrant(tivcg.getChannel(), tivcg.getServiceOptions(),
-                    identifiers, tsbk.getOpcode(), tivcg.getTimestamp());
-        }
-    }
-
-    private void processTSBKUnitToUnitVoiceChannelGrantUpdate(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof UnitToUnitVoiceChannelGrantUpdate uuvcgu)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = getMutableIdentifierCollection(uuvcgu.getIdentifiers());
-
-            processChannelGrant(uuvcgu.getChannel(), null, identifiers,
-                    tsbk.getOpcode(), uuvcgu.getTimestamp());
-        }
-    }
-
-    private void processTSBKUnitToUnitVoiceChannelGrant(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof UnitToUnitVoiceChannelGrant uuvcg)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = getMutableIdentifierCollection(uuvcg.getIdentifiers());
-
-            processChannelGrant(uuvcg.getChannel(), null, identifiers,
-                    tsbk.getOpcode(), uuvcg.getTimestamp());
-        }
-    }
-
-    private void processTSBKGroupVoiceChannelGrantUpdateExplicit(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof GroupVoiceChannelGrantUpdateExplicit gvcgue)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-            identifiers.remove(IdentifierClass.USER);
-            identifiers.update(mPatchGroupManager.update(gvcgue.getGroupAddress()));
-
-            processChannelGrant(gvcgue.getChannel(), gvcgue.getServiceOptions(),
-                    identifiers, tsbk.getOpcode(), gvcgue.getTimestamp());
-        }
-    }
-
-    private void processTSBKGroupVoiceChannelGrantUpdate(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof GroupVoiceChannelGrantUpdate gvcgu)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiersA = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-            identifiersA.remove(IdentifierClass.USER);
-            identifiersA.update(mPatchGroupManager.update(gvcgu.getGroupAddressA()));
-
-            processChannelGrant(gvcgu.getChannelA(), null, identifiersA,
-                    tsbk.getOpcode(), gvcgu.getTimestamp());
-
-            if(gvcgu.hasGroupB())
-            {
-                //Make a copy of current identifiers and remove current user identifiers and replace from message
-                MutableIdentifierCollection identifiersB = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-                identifiersB.remove(IdentifierClass.USER);
-                identifiersB.update(mPatchGroupManager.update(gvcgu.getGroupAddressB()));
-
-                processChannelGrant(gvcgu.getChannelB(), null, identifiersB,
-                        tsbk.getOpcode(), gvcgu.getTimestamp());
-            }
-        }
-    }
-
-    private void processTSBKGroupVoiceChannelGrant(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof GroupVoiceChannelGrant gvcg)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-            identifiers.remove(IdentifierClass.USER);
-            for(Identifier identifier : gvcg.getIdentifiers())
-            {
-                identifiers.update(mPatchGroupManager.update(identifier));
-            }
-
-            processChannelGrant(gvcg.getChannel(), gvcg.getServiceOptions(),
-                    identifiers, tsbk.getOpcode(), gvcg.getTimestamp());
-        }
-    }
-
-    private void processTSBKDataChannelGrant(TSBKMessage tsbk)
-    {
-        if(tsbk instanceof GroupDataChannelGrant gdcg)
-        {
-            //Make a copy of current identifiers and remove current user identifiers and replace from message
-            MutableIdentifierCollection identifiers = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
-            identifiers.remove(IdentifierClass.USER);
-            for(Identifier identifier : gdcg.getIdentifiers())
-            {
-                identifiers.update(mPatchGroupManager.update(identifier));
-            }
-
-            processChannelGrant(gdcg.getChannel(), gdcg.getDataServiceOptions(),
-                    identifiers, tsbk.getOpcode(), gdcg.getTimestamp());
+            broadcastEvent(tsbk, DecodeEventType.ACKNOWLEDGE, "ACKNOWLEDGE " + mar.getAcknowledgedService());
         }
     }
 
     /**
-     * Processes encryption sync parameters carried by an LDU2 message
-     *
-     * @param esp that is non-null and valid
+     * TSBK Channel Grant Update messages
      */
-    private void processEncryptionSyncParameters(EncryptionSyncParameters esp, long timestamp)
+    private void processTSBKChannelGrantUpdate(TSBKMessage tsbk)
     {
-        if(esp.isEncryptedAudio())
+        switch(tsbk.getOpcode())
         {
-            for(Identifier identifier : esp.getIdentifiers())
-            {
-                //Add to the identifier collection after filtering through the patch group manager
-                getIdentifierCollection().update(mPatchGroupManager.update(identifier));
-            }
-            Encryption encryption = Encryption.fromValue(esp.getEncryptionKey().getValue().getAlgorithm());
-            updateCurrentCall(DecodeEventType.CALL_ENCRYPTED, "ALGORITHM:" + encryption.toString(), timestamp);
+            case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_UPDATE:
+                if(tsbk instanceof MotorolaGroupRegroupChannelUpdate pgvcgu)
+                {
+                    processChannelUpdate(pgvcgu.getChannel1(), null, Collections.singletonList(pgvcgu.getPatchGroup1()),
+                            tsbk.getOpcode(), pgvcgu.getTimestamp());
+
+                    if(pgvcgu.hasPatchGroup2())
+                    {
+                        processChannelUpdate(pgvcgu.getChannel2(), null, Collections.singletonList(pgvcgu.getPatchGroup2()),
+                                tsbk.getOpcode(), pgvcgu.getTimestamp());
+                    }
+                }
+                break;
+            case OSP_GROUP_VOICE_CHANNEL_GRANT_UPDATE:
+                if(tsbk instanceof GroupVoiceChannelGrantUpdate gvcgu)
+                {
+                    processChannelUpdate(gvcgu.getChannelA(), null, Collections.singletonList(gvcgu.getGroupAddressA()),
+                            tsbk.getOpcode(), gvcgu.getTimestamp());
+
+                    if(gvcgu.hasGroupB())
+                    {
+                        processChannelGrant(gvcgu.getChannelB(), null, Collections.singletonList(gvcgu.getGroupAddressB()),
+                                tsbk.getOpcode(), gvcgu.getTimestamp());
+                    }
+                }
+                break;
+            case OSP_GROUP_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
+                if(tsbk instanceof GroupVoiceChannelGrantUpdateExplicit gvcgue)
+                {
+                    processChannelUpdate(gvcgue.getChannel(), gvcgue.getServiceOptions(), gvcgue.getIdentifiers(),
+                            tsbk.getOpcode(), gvcgue.getTimestamp());
+                }
+                break;
+            case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE:
+                if(tsbk instanceof TelephoneInterconnectVoiceChannelGrantUpdate tivcgu)
+                {
+                    processChannelUpdate(tivcgu.getChannel(), tivcgu.getServiceOptions(), tivcgu.getIdentifiers(),
+                            tsbk.getOpcode(), tivcgu.getTimestamp());
+                }
+                break;
+            case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE:
+                if(tsbk instanceof UnitToUnitVoiceChannelGrantUpdate uuvcgu)
+                {
+                    processChannelUpdate(uuvcgu.getChannel(), null, uuvcgu.getIdentifiers(), tsbk.getOpcode(),
+                            uuvcgu.getTimestamp());
+                }
+                break;
         }
-        else
+    }
+
+    /**
+     * TSBK Channel Grant messages
+     */
+    private void processTSBKChannelGrant(TSBKMessage tsbk)
+    {
+        switch(tsbk.getOpcode())
         {
-            getIdentifierCollection().remove(Form.ENCRYPTION_KEY);
-            updateCurrentCall(DecodeEventType.CALL, null, timestamp);
+            case MOTOROLA_OSP_GROUP_REGROUP_CHANNEL_GRANT:
+                if(tsbk instanceof MotorolaGroupRegroupChannelGrant mgrcg)
+                {
+                    processChannelGrant(mgrcg.getChannel(), mgrcg.getServiceOptions(), mgrcg.getIdentifiers(), tsbk.getOpcode(),
+                            mgrcg.getTimestamp());
+                }
+                break;
+            case OSP_GROUP_DATA_CHANNEL_GRANT:
+                if(tsbk instanceof GroupDataChannelGrant gdcg)
+                {
+                    processChannelGrant(gdcg.getChannel(), gdcg.getDataServiceOptions(), gdcg.getIdentifiers(),
+                            tsbk.getOpcode(), gdcg.getTimestamp());
+                }
+                break;
+            case OSP_GROUP_VOICE_CHANNEL_GRANT:
+                if(tsbk instanceof GroupVoiceChannelGrant gvcg)
+                {
+                    processChannelGrant(gvcg.getChannel(), gvcg.getServiceOptions(), gvcg.getIdentifiers(), tsbk.getOpcode(),
+                            gvcg.getTimestamp());
+                }
+                break;
+            case OSP_SNDCP_DATA_CHANNEL_GRANT:
+                if(tsbk instanceof SNDCPDataChannelGrant dcg)
+                {
+                    processChannelGrant(dcg.getChannel(), dcg.getServiceOptions(), dcg.getIdentifiers(), tsbk.getOpcode(),
+                            dcg.getTimestamp());
+                }
+                break;
+            case OSP_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT:
+                if(tsbk instanceof UnitToUnitVoiceChannelGrant uuvcg)
+                {
+                    processChannelGrant(uuvcg.getChannel(), null, uuvcg.getIdentifiers(), tsbk.getOpcode(),
+                            uuvcg.getTimestamp());
+                }
+                break;
+            case OSP_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT:
+                if(tsbk instanceof TelephoneInterconnectVoiceChannelGrant tivcg)
+                {
+                    processChannelGrant(tivcg.getChannel(), tivcg.getServiceOptions(), tivcg.getIdentifiers(), tsbk.getOpcode(),
+                            tivcg.getTimestamp());
+                }
+                break;
         }
     }
 
     /**
      * Processes a Link Control Word (LCW) that is carried by either an LDU1 or a TDULC message.
      *
+     * Note: this method does not broadcast a DecoderStateEvent -- that is handled by the parent message processing
+     * method.
+     *
      * @param lcw that is non-null and valid
      */
-    private void processLinkControl(LinkControlWord lcw, long timestamp)
+    private void processLC(LinkControlWord lcw, long timestamp, boolean isTerminator)
     {
         switch(lcw.getOpcode())
         {
             //Calls in-progress on this channel
             case GROUP_VOICE_CHANNEL_USER:
             case MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_USER:
-            case MOTOROLA_TALK_COMPLETE:
             case TELEPHONE_INTERCONNECT_VOICE_CHANNEL_USER:
             case UNIT_TO_UNIT_VOICE_CHANNEL_USER:
             case UNIT_TO_UNIT_VOICE_CHANNEL_USER_EXTENDED:
-                for(Identifier identifier : lcw.getIdentifiers())
+                if(isTerminator)
                 {
-                    //Add to the identifier collection after filtering through the patch group manager
-                    getIdentifierCollection().update(mPatchGroupManager.update(identifier));
-
-                    if(mCurrentCallEvent != null)
-                    {
-                        broadcast(mCurrentCallEvent);
-                    }
+                    closeCurrentCallEvent(timestamp);
+                }
+                else
+                {
+                    processLCChannelUser(lcw, timestamp);
+                }
+                break;
+            case MOTOROLA_TALK_COMPLETE:
+                if(lcw instanceof LCMotorolaTalkComplete tc)
+                {
+                    getIdentifierCollection().update(tc.getAddress());
+                    mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), tc.getAddress(), timestamp);
+                    closeCurrentCallEvent(timestamp);
                 }
                 break;
 
             //Call termination
             case CALL_TERMINATION_OR_CANCELLATION:
+                closeCurrentCallEvent(timestamp);
+
                 //Note: we only broadcast an END state if this is a network-commanded channel teardown
-                if(lcw instanceof LCCallTermination && ((LCCallTermination)lcw).isNetworkCommandedTeardown())
+                if(lcw instanceof LCCallTermination lcct && lcct.isNetworkCommandedTeardown())
                 {
                     broadcast(new DecoderStateEvent(this, Event.END, State.FADE));
                 }
@@ -1860,120 +1734,281 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
             //Calls in-progress on another channel
             case GROUP_VOICE_CHANNEL_UPDATE:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                if(lcw instanceof LCGroupVoiceChannelUpdate vcu)
+                {
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getGroupAddressA());
+                    mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannelA(), null, mic,
+                            null, timestamp);
+
+                    if(vcu.hasChannelB())
+                    {
+                        MutableIdentifierCollection micB = getMutableIdentifierCollection(vcu.getGroupAddressB());
+                        mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannelB(), null, micB,
+                                null, timestamp);
+                    }
+                }
+                break;
             case GROUP_VOICE_CHANNEL_UPDATE_EXPLICIT:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                if(lcw instanceof LCGroupVoiceChannelUpdateExplicit vcu)
+                {
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getGroupAddress());
+                    mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannel(), vcu.getServiceOptions(), mic,
+                            null, timestamp);
+                }
                 break;
 
             //Network configuration messages
+            case RFSS_STATUS_BROADCAST:
+                if(getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() == 0)
+                {
+                    if(lcw instanceof LCRFSSStatusBroadcast rfss)
+                    {
+                        setCurrentChannel(rfss.getChannel());
+                    }
+                }
+
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                mNetworkConfigurationMonitor.process(lcw);
+                break;
+            case RFSS_STATUS_BROADCAST_EXPLICIT:
+                if(getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() == 0)
+                {
+                    if(lcw instanceof LCRFSSStatusBroadcastExplicit rfss)
+                    {
+                        setCurrentChannel(rfss.getChannel());
+                    }
+                }
+
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                mNetworkConfigurationMonitor.process(lcw);
+                break;
+
             case ADJACENT_SITE_STATUS_BROADCAST:
             case ADJACENT_SITE_STATUS_BROADCAST_EXPLICIT:
             case NETWORK_STATUS_BROADCAST:
             case NETWORK_STATUS_BROADCAST_EXPLICIT:
             case PROTECTION_PARAMETER_BROADCAST:
-            case RFSS_STATUS_BROADCAST:
-            case RFSS_STATUS_BROADCAST_EXPLICIT:
             case SECONDARY_CONTROL_CHANNEL_BROADCAST:
             case SECONDARY_CONTROL_CHANNEL_BROADCAST_EXPLICIT:
             case SYSTEM_SERVICE_BROADCAST:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 mNetworkConfigurationMonitor.process(lcw);
                 break;
 
             //Patch Group management
-            case MOTOROLA_PATCH_GROUP_ADD:
+            case MOTOROLA_GROUP_REGROUP_ADD:
                 mPatchGroupManager.addPatchGroups(lcw.getIdentifiers());
                 break;
-            case MOTOROLA_PATCH_GROUP_DELETE:
+            case MOTOROLA_GROUP_REGROUP_DELETE:
                 mPatchGroupManager.removePatchGroups(lcw.getIdentifiers());
                 break;
             case MOTOROLA_GROUP_REGROUP_VOICE_CHANNEL_UPDATE:
-                mPatchGroupManager.addPatchGroups(lcw.getIdentifiers());
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+
+                if(lcw instanceof LCMotorolaGroupRegroupVoiceChannelUpdate vcu)
+                {
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getSupergroupAddress());
+                    mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannel(), vcu.getServiceOptions(), mic,
+                            null, timestamp);
+                }
+                break;
+            case MOTOROLA_RADIO_REPROGRAM_HEADER:
+            case MOTOROLA_RADIO_REPROGRAM_RECORD:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 break;
 
             //Other events
             case CALL_ALERT:
-                processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Call Alert");
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Call Alert");
                 break;
             case EXTENDED_FUNCTION_COMMAND:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 if(lcw instanceof LCExtendedFunctionCommand efc)
                 {
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Function: " + efc.getExtendedFunction() +
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Function: " +
+                            efc.getExtendedFunction() +
                             " Arguments:" + efc.getExtendedFunctionArguments());
                 }
                 break;
             case EXTENDED_FUNCTION_COMMAND_EXTENDED:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 if(lcw instanceof LCExtendedFunctionCommandExtended efce)
                 {
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Function: " + efce.getExtendedFunction() + " Arguments:" + efce.getExtendedFunctionArguments());
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Function: " +
+                            efce.getExtendedFunction() + " Arguments:" + efce.getExtendedFunctionArguments());
                 }
             case GROUP_AFFILIATION_QUERY:
-                processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.QUERY, "Group Affiliation");
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.QUERY, "Group Affiliation");
                 break;
             case MESSAGE_UPDATE:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 if(lcw instanceof LCMessageUpdate mu)
                 {
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.SDM,
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.SDM,
                             "MSG:" + mu.getShortDataMessage());
                 }
                 break;
             case MESSAGE_UPDATE_EXTENDED:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 if(lcw instanceof LCMessageUpdateExtended mue)
                 {
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.SDM, "MSG:" + mue.getShortDataMessage());
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.SDM, "MSG:" +
+                            mue.getShortDataMessage());
                 }
                 break;
             case STATUS_QUERY:
-                processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.QUERY, "Status");
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.QUERY, "Status");
                 break;
             case STATUS_UPDATE:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 if(lcw instanceof LCStatusUpdate su)
                 {
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.STATUS,
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.STATUS,
                             "UNIT:" + su.getUnitStatus() + " USER:" + su.getUserStatus());
                 }
                 break;
             case STATUS_UPDATE_EXTENDED:
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
                 if(lcw instanceof LCStatusUpdateExtended sue)
                 {
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.STATUS, "UNIT:" + sue.getUnitStatus() + " USER:" + sue.getUserStatus());
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.STATUS, "UNIT:" +
+                            sue.getUnitStatus() + " USER:" + sue.getUserStatus());
                 }
                 break;
             case TELEPHONE_INTERCONNECT_ANSWER_REQUEST:
-                if(lcw instanceof LCTelephoneInterconnectAnswerRequest)
+                if(isTerminator)
                 {
-                    LCTelephoneInterconnectAnswerRequest tiar = (LCTelephoneInterconnectAnswerRequest)lcw;
-
-                    processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Telephone Call:" + tiar.getTelephoneNumber());
+                    closeCurrentCallEvent(timestamp);
+                }
+                if(lcw instanceof LCTelephoneInterconnectAnswerRequest tiar)
+                {
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Telephone Call:" +
+                            tiar.getTelephoneNumber());
                 }
                 break;
             case UNIT_AUTHENTICATION_COMMAND:
-                processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Authenticate Unit");
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Authenticate Unit");
                 break;
             case UNIT_REGISTRATION_COMMAND:
-                processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Unit Registration");
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.COMMAND, "Unit Registration");
                 break;
             case UNIT_TO_UNIT_ANSWER_REQUEST:
-                processBroadcast(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Unit-to-Unit Answer Request");
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Unit-to-Unit Answer Request");
                 break;
             case MOTOROLA_UNIT_GPS:
-                if(lcw instanceof LCMotorolaUnitGPS moto)
+                if(lcw instanceof LCMotorolaUnitGPS gps)
                 {
-                    String gpsDetails = "LOCATION: " + moto.getLatitude() + " " + moto.getLongitude();
+                    mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), gps.getLocation(), timestamp);
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(gps.getIdentifiers());
 
                     PlottableDecodeEvent event = PlottableDecodeEvent.plottableBuilder(DecodeEventType.GPS, timestamp)
-                            .location(new GeoPosition(moto.getLatitude(), moto.getLongitude()))
+                            .location(gps.getGeoPosition())
                             .channel(getCurrentChannel())
-                            .details(gpsDetails)
+                            .details(gps.getLocation().toString())
                             .end(timestamp)
                             .protocol(Protocol.APCO25)
-                            .identifiers(new IdentifierCollection(getIdentifierCollection().getIdentifiers()))
+                            .identifiers(mic)
                             .build();
                     broadcast(event);
                 }
+
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                break;
+            case SOURCE_ID_EXTENSION:
+                //Ignore - handled elsewhere
                 break;
             default:
-//                mLog.debug("Unrecognized LCW Opcode: " + lcw.getOpcode().name() + " VENDOR:" + lcw.getVendor() +
-//                    " OPCODE:" + lcw.getOpcodeNumber());
+                if(isTerminator)
+                {
+                    closeCurrentCallEvent(timestamp);
+                }
+                LOGGING_SUPPRESSOR.info(lcw.getVendor().toString() + lcw.getOpcodeNumber(), 1,
+                        "Unrecognized LCW Opcode: " + lcw.getOpcode().name() + " VENDOR:" + lcw.getVendor() +
+                    " OPCODE:" + lcw.getOpcodeNumber());
                 break;
         }
+    }
+
+    /**
+     * Closes the call event on the current channel.
+     * @param timestamp
+     */
+    private void closeCurrentCallEvent(long timestamp)
+    {
+        mTrafficChannelManager.closeP1CallEvent(getCurrentFrequency(), timestamp);
+        getIdentifierCollection().remove(IdentifierClass.USER);
     }
 
     @Override
@@ -1991,6 +2026,14 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 resetState();
                 mNetworkConfigurationMonitor.reset();
                 break;
+            case NOTIFICATION_SOURCE_FREQUENCY:
+                long frequency = event.getFrequency();
+
+                //Notify the TCM that our control frequency has changed.
+                if(mChannel.isStandardChannel())
+                {
+                    mTrafficChannelManager.setCurrentControlFrequency(frequency, mChannel);
+                }
             default:
                 break;
         }
@@ -2003,7 +2046,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         mPatchGroupManager.clear();
 
         //Change the default (45-second) traffic channel timeout to 1 second
-        if(mChannelType == ChannelType.TRAFFIC)
+        if(mChannel.isTrafficChannel())
         {
             broadcast(new ChangeChannelTimeoutEvent(this, ChannelType.TRAFFIC, 1000));
         }

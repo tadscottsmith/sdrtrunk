@@ -22,7 +22,6 @@ package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure;
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.identifier.Identifier;
-import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +31,7 @@ import java.util.List;
  */
 public class GroupVoiceChannelUserAbbreviated extends MacStructureGroupVoiceService
 {
-    private static final IntField SOURCE_ADDRESS = IntField.range(32, 55);
+    private static final IntField SOURCE_ADDRESS = IntField.length24(OCTET_5_BIT_32);
 
     private List<Identifier> mIdentifiers;
     private Identifier mSourceAddress;
