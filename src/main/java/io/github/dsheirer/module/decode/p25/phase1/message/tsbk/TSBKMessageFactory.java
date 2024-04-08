@@ -33,14 +33,14 @@ import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.Cha
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaAcknowledgeResponse;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaBaseStationId;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaDenyResponse;
+import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaEmergencyAlarmActivation;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaExtendedFunctionCommand;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaGroupRegroupAddCommand;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaGroupRegroupChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaGroupRegroupChannelUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaGroupRegroupDeleteCommand;
-import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaOpcode10;
+import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaOpcode15;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaQueuedResponse;
-import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaTalkerAlias;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.MotorolaTrafficChannel;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.PlannedChannelShutdown;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.motorola.osp.UnknownMotorolaOSPMessage;
@@ -337,10 +337,10 @@ public class TSBKMessageFactory
                 return new ChannelLoading(dataUnitID, message, nac, timestamp);
             case MOTOROLA_OSP_EXTENDED_FUNCTION_COMMAND:
                 return new MotorolaExtendedFunctionCommand(dataUnitID, message, nac, timestamp);
-            case MOTOROLA_OSP_OPCODE_10:
-                return new MotorolaOpcode10(dataUnitID, message, nac, timestamp);
-            case MOTOROLA_OSP_TALKER_ALIAS:
-                return new MotorolaTalkerAlias(dataUnitID, message, nac, timestamp);
+            case MOTOROLA_OSP_EMERGENCY_ALARM_ACTIVATION:
+                return new MotorolaEmergencyAlarmActivation(dataUnitID, message, nac, timestamp);
+            case MOTOROLA_OSP_OPCODE_15:
+                return new MotorolaOpcode15(dataUnitID, message, nac, timestamp);
             case MOTOROLA_OSP_UNKNOWN:
                 return new UnknownMotorolaOSPMessage(dataUnitID, message, nac, timestamp);
 

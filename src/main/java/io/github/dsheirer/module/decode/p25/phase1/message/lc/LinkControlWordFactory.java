@@ -23,11 +23,11 @@ import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisUnknownOpcode10;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisUnknownOpcode42;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisUnknownOpcode43;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaEmergencyAlarmActivation;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupGroupDelete;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupAdd;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUser;
-import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaOpcode10;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaRadioReprogramHeader;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaRadioReprogramRecord;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaTalkComplete;
@@ -177,8 +177,8 @@ public class LinkControlWordFactory
                 return new LCMotorolaRadioReprogramHeader(message);
             case MOTOROLA_RADIO_REPROGRAM_RECORD:
                 return new LCMotorolaRadioReprogramRecord(message);
-            case MOTOROLA_OPCODE_10:
-                return new LCMotorolaOpcode10(message);
+            case MOTOROLA_EMERGENCY_ALARM_ACTIVATION:
+                return new LCMotorolaEmergencyAlarmActivation(message);
             case MOTOROLA_UNKNOWN:
                 return new LCMotorolaUnknownOpcode(message);
 

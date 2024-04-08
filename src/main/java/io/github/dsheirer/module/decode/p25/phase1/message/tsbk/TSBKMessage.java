@@ -39,6 +39,7 @@ public abstract class TSBKMessage extends P25P1Message
     private static final int ENCRYPTION_FLAG = 1;
     private static final int[] OPCODE = {2, 3, 4, 5, 6, 7};
     private static final int[] VENDOR = {8, 9, 10, 11, 12, 13, 14, 15};
+    //16-bit CRC starts at OCTET 10, Bits 80-95
 
     private P25P1DataUnitID mDataUnitID;
 

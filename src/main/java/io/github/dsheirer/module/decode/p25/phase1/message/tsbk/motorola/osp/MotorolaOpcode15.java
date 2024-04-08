@@ -25,24 +25,18 @@ import io.github.dsheirer.module.decode.p25.phase1.P25P1DataUnitID;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.VendorOSPMessage;
 import java.util.Collections;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * Motorola Talker Alias?  This will probably never be a TSBK message.  I'd guess we'll see this on a traffic channel
- * in a link control message?
+ * Motorola Unknown Opcode 15 (0x0F).
  */
-public class MotorolaTalkerAlias extends VendorOSPMessage
+public class MotorolaOpcode15 extends VendorOSPMessage
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MotorolaTalkerAlias.class);
-
     /**
      * Constructs a TSBK from the binary message sequence.
      */
-    public MotorolaTalkerAlias(P25P1DataUnitID dataUnitId, CorrectedBinaryMessage message, int nac, long timestamp)
+    public MotorolaOpcode15(P25P1DataUnitID dataUnitId, CorrectedBinaryMessage message, int nac, long timestamp)
     {
         super(dataUnitId, message, nac, timestamp);
-        LOGGER.debug("Motorola Talker Alias TSBK Detected: " + getMessage().toHexString());
     }
 
     public String toString()

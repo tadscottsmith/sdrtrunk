@@ -231,10 +231,13 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     {
         if(mDecodeEventListener != null)
         {
-            if(decodeEvent.getEventType() == DecodeEventType.DATA_CALL &&
-               mDuplicateDetector.isDuplicate(decodeEvent, System.currentTimeMillis()))
+            synchronized(mDuplicateDetector)
             {
-                return;
+                if(decodeEvent.getEventType() == DecodeEventType.DATA_CALL &&
+                        mDuplicateDetector.isDuplicate(decodeEvent, System.currentTimeMillis()))
+                {
+                    return;
+                }
             }
 
             mDecodeEventListener.receive(decodeEvent);

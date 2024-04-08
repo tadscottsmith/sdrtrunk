@@ -1438,6 +1438,10 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case MOTOROLA_OSP_DENY_RESPONSE:
                     processTSBKDenyResponse(tsbk);
                     break;
+                case MOTOROLA_OSP_EMERGENCY_ALARM_ACTIVATION:
+                    broadcastEvent(tsbk.getIdentifiers(), tsbk.getTimestamp(), DecodeEventType.EMERGENCY,
+                            "RADIO EMERGENCY ALARM ACTIVATION");
+                    break;
                 case MOTOROLA_OSP_EXTENDED_FUNCTION_COMMAND:
                     processTSBKExtendedFunctionCommand(tsbk);
                     break;
@@ -1446,8 +1450,9 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 default:
                     if(!tsbk.getOpcode().name().startsWith("ISP"))
                     {
-                        LOGGING_SUPPRESSOR.info(tsbk.getOpcode().name(), 1, "Unrecognized TSBK Opcode: " +
-                                tsbk.getOpcode().name() + " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber() +
+                        LOGGING_SUPPRESSOR.info(tsbk.getOpcode().name() + tsbk.getMessage().toHexString(),
+                        1, "Unrecognized TSBK Opcode: " + tsbk.getOpcode().name() +
+                            " VENDOR:" + tsbk.getVendor() + " OPCODE:" + tsbk.getOpcodeNumber() +
                                 " MSG:" + tsbk.getMessage().toHexString());
                     }
                     break;
@@ -2079,6 +2084,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Unit-to-Unit Answer Request");
                 break;
+            case MOTOROLA_EMERGENCY_ALARM_ACTIVATION:
+                break;
             case MOTOROLA_UNIT_GPS:
                 if(lcw instanceof LCMotorolaUnitGPS gps)
                 {
@@ -2109,8 +2116,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 {
                     closeCurrentCallEvent(timestamp);
                 }
-                LOGGING_SUPPRESSOR.info(lcw.getVendor().toString() + lcw.getOpcodeNumber(), 1,
-                        "Unrecognized LCW Opcode: " + lcw.getOpcode().name() + " VENDOR:" + lcw.getVendor() +
+                LOGGING_SUPPRESSOR.info(lcw.getVendor().toString() + lcw.getOpcodeNumber() + lcw.getMessage().toHexString(),
+                        1, "Unrecognized LCW Opcode: " + lcw.getOpcode().name() + " VENDOR:" + lcw.getVendor() +
                     " OPCODE:" + lcw.getOpcodeNumber() + " MSG:" + lcw.getMessage().toHexString() +
                                 " CHAN:" + getCurrentChannel() + " FREQ:" + getCurrentFrequency());
                 break;

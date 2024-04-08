@@ -57,7 +57,8 @@ public class UnitRegistrationResponse extends OSPMessage
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append("UNIT REGISTRATION ").append(getResponse().name());
+        sb.append(getMessageStub());
+        sb.append(" REGISTRATION ").append(getResponse().name());
         sb.append(" FOR RADIO:").append(getRegisteredRadio());
         return sb.toString();
     }
