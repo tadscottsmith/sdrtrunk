@@ -39,7 +39,7 @@ public class DecodeEventDuplicateDetector
      * @param timestamp of a current message to trigger time-based event age off.
      * @return true if the event is a duplicate.
      */
-    public boolean isDuplicate(IDecodeEvent event, long timestamp)
+    public synchronized boolean isDuplicate(IDecodeEvent event, long timestamp)
     {
         //Null event types and voice call event types are not tracked by this detector
         if(event.getEventType() == null || event.getEventType().isVoiceCallEvent())
@@ -83,6 +83,11 @@ public class DecodeEventDuplicateDetector
 
             String key = getKey(event);
 
+            if(key == null || key.isEmpty())
+            {
+                return false;
+            }
+
             if(mDecodeEventMap.containsKey(key))
             {
                 return true;
@@ -114,10 +119,13 @@ public class DecodeEventDuplicateDetector
             long threshold = timestamp - EVENT_MAX_AGE_MILLISECONDS;
             List<String> toRemove = new ArrayList<>();
 
-            mDecodeEventMap.entrySet()
-                    .stream()
-                    .filter(entry -> entry.getValue().getTimeStart() < threshold)
-                    .forEach(entry -> toRemove.add(entry.getKey()));
+            for(Map.Entry<String,IDecodeEvent> entry: mDecodeEventMap.entrySet())
+            {
+                if(entry.getValue() == null || entry.getValue().getTimeStart() < threshold)
+                {
+                    toRemove.add(entry.getKey());
+                }
+            }
 
             for(String key: toRemove)
             {

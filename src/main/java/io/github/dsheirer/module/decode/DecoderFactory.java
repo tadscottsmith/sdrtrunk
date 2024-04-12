@@ -152,7 +152,7 @@ public class DecoderFactory
                                                  UserPreferences userPreferences, TrafficChannelManager trafficChannelManager,
                                                  IChannelDescriptor channelDescriptor)
     {
-        List<Module> modules = new ArrayList<Module>();
+        List<Module> modules = new ArrayList<>();
 
         AliasList aliasList = aliasModel.getAliasList(channel.getAliasListName());
         modules.add(new AliasActionManager(aliasList));

@@ -200,7 +200,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             {
                 if(identifier instanceof PatchGroupIdentifier patchGroupIdentifier)
                 {
-                    mPatchGroupManager.addPatchGroup(patchGroupIdentifier);
+                    mPatchGroupManager.addPatchGroup(patchGroupIdentifier, preLoadDataContent.getTimestamp());
                 }
             }
         }
@@ -619,17 +619,21 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
     /**
      * Creates a copy of the current identifier collection with all USER and CHANNEL identifiers removed and adds the
      * user identifier argument added to the collection.
+     * @param userIdentifierToAdd to add to the collection
+     * @param timestamp to check for freshness of patch groups.
      */
-    private MutableIdentifierCollection getIdentifierCollectionForUser(Identifier userIdentifierToAdd)
+    private MutableIdentifierCollection getIdentifierCollectionForUser(Identifier userIdentifierToAdd, long timestamp)
     {
-        return getIdentifierCollectionForUsers(Collections.singletonList(userIdentifierToAdd));
+        return getIdentifierCollectionForUsers(Collections.singletonList(userIdentifierToAdd), timestamp);
     }
 
     /**
      * Creates a copy of the current identifier collection with all USER and CHANNEL identifiers removed and adds the
      * user identifiers argument added to the collection.
+     * @param identifiersToAdd to add to the collection
+     * @param timestamp to check for freshness of patch groups.
      */
-    private MutableIdentifierCollection getIdentifierCollectionForUsers(List<Identifier> identifiersToAdd)
+    private MutableIdentifierCollection getIdentifierCollectionForUsers(List<Identifier> identifiersToAdd, long timestamp)
     {
         MutableIdentifierCollection ic = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
         ic.remove(IdentifierClass.USER);
@@ -637,7 +641,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
         for(Identifier identifier : identifiersToAdd)
         {
             //Filter the identifiers through the patch group manager
-            ic.update(mPatchGroupManager.update(identifier));
+            ic.update(mPatchGroupManager.update(identifier, timestamp));
         }
         return ic;
     }
@@ -773,7 +777,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
         //All channel grant messages implement this interface
         if(mac instanceof IP25ChannelGrantDetailProvider cgdp)
         {
-            MutableIdentifierCollection ic = getIdentifierCollectionForUsers(mac.getIdentifiers());
+            MutableIdentifierCollection ic = getIdentifierCollectionForUsers(mac.getIdentifiers(), message.getTimestamp());
             //Add the traffic channel to the IC
             ic.update(cgdp.getChannel());
             mTrafficChannelManager.processP2ChannelGrant(cgdp.getChannel(), cgdp.getServiceOptions(), ic, mac.getOpcode(),
@@ -793,14 +797,14 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case TDMA_05_GROUP_VOICE_CHANNEL_GRANT_UPDATE_MULTIPLE_IMPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateMultipleImplicit cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1(), message.getTimestamp());
                     mic.update(cgu.getChannel1());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions1(), mic,
                             mac.getOpcode(), message.getTimestamp());
 
                     if(cgu.hasGroup2())
                     {
-                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2());
+                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2(), message.getTimestamp());
                         mic2.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions2(), mic2,
                                 mac.getOpcode(), message.getTimestamp());
@@ -808,7 +812,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                     if(cgu.hasGroup3())
                     {
-                        MutableIdentifierCollection mic3 = getIdentifierCollectionForUser(cgu.getGroupAddress3());
+                        MutableIdentifierCollection mic3 = getIdentifierCollectionForUser(cgu.getGroupAddress3(), message.getTimestamp());
                         mic3.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions3(), mic3,
                                 mac.getOpcode(), message.getTimestamp());
@@ -818,14 +822,14 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case TDMA_25_GROUP_VOICE_CHANNEL_GRANT_UPDATE_MULTIPLE_EXPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateMultipleExplicit cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1(), message.getTimestamp());
                     mic.update(cgu.getChannel1());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions1(), mic,
                             mac.getOpcode(), message.getTimestamp());
 
                     if(cgu.hasGroup2())
                     {
-                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2());
+                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2(), message.getTimestamp());
                         mic2.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions2(), mic2,
                                 mac.getOpcode(), message.getTimestamp());
@@ -837,14 +841,14 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 {
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1(), message.getTimestamp());
                     mic.update(cgu.getChannel1());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), serviceOptions, mic, mac.getOpcode(),
                             message.getTimestamp());
 
                     if(cgu.hasGroup2())
                     {
-                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2());
+                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2(), message.getTimestamp());
                         mic2.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), serviceOptions, mic2,
                                 mac.getOpcode(), message.getTimestamp());
@@ -856,7 +860,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 {
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), serviceOptions, mic, mac.getOpcode(),
                             message.getTimestamp());
@@ -867,7 +871,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 {
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), serviceOptions, mic, mac.getOpcode(),
                             message.getTimestamp());
@@ -876,7 +880,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C3_GROUP_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateExplicit cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
                             mac.getOpcode(), message.getTimestamp());
@@ -887,7 +891,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 {
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), serviceOptions, mic, mac.getOpcode(),
                             message.getTimestamp());
@@ -896,7 +900,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C7_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE_EXTENDED_LCCH:
                 if(mac instanceof UnitToUnitVoiceChannelGrantUpdateExtendedLCCH cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
                             mac.getOpcode(), message.getTimestamp());
@@ -905,7 +909,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C9_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
                 if(mac instanceof TelephoneInterconnectVoiceChannelGrantUpdateExplicit cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
                             mac.getOpcode(), message.getTimestamp());
@@ -914,7 +918,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case MOTOROLA_83_GROUP_REGROUP_VOICE_CHANNEL_UPDATE:
                 if(mac instanceof MotorolaGroupRegroupVoiceChannelUpdate cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getSupergroup());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getSupergroup(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
                             mac.getOpcode(), message.getTimestamp());
@@ -925,14 +929,14 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 {
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getPatchgroupA());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getPatchgroupA(), message.getTimestamp());
                     mic.update(cgu.getChannelA());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannelA(), serviceOptions, mic, mac.getOpcode(),
                             message.getTimestamp());
 
                     if(cgu.hasPatchgroupB())
                     {
-                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getPatchgroupB());
+                        MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getPatchgroupB(), message.getTimestamp());
                         mic2.update(cgu.getChannelB());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannelB(), serviceOptions, mic2,
                                 mac.getOpcode(), message.getTimestamp());
@@ -960,7 +964,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             for(Identifier identifier : mac.getIdentifiers())
             {
                 //Add to the identifier collection after filtering through the patch group manager
-                getIdentifierCollection().update(mPatchGroupManager.update(identifier));
+                getIdentifierCollection().update(mPatchGroupManager.update(identifier, message.getTimestamp()));
             }
         }
         else
@@ -968,7 +972,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             for(Identifier identifier : mac.getIdentifiers())
             {
                 //Add to the identifier collection after filtering through the patch group manager
-                getIdentifierCollection().update(mPatchGroupManager.update(identifier));
+                getIdentifierCollection().update(mPatchGroupManager.update(identifier, message.getTimestamp()));
             }
 
             if(mac instanceof IServiceOptionsProvider sop)
@@ -1007,7 +1011,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
         for(Identifier identifier : mac.getIdentifiers())
         {
             //Add to the identifier collection after filtering through the patch group manager
-            getIdentifierCollection().update(mPatchGroupManager.update(identifier));
+            getIdentifierCollection().update(mPatchGroupManager.update(identifier, message.getTimestamp()));
         }
 
         if(mac instanceof PushToTalk ptt)
@@ -1032,7 +1036,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 {
                     if(regroup.getRegroupOptions().isActivate())
                     {
-                        if(mPatchGroupManager.addPatchGroup(regroup.getPatchGroup()))
+                        if(mPatchGroupManager.addPatchGroup(regroup.getPatchGroup(), message.getTimestamp()))
                         {
                             broadcast(message, mac, DecodeEventType.DYNAMIC_REGROUP, "ACTIVATE " + regroup.getPatchGroup());
                         }
@@ -1049,7 +1053,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case MOTOROLA_81_GROUP_REGROUP_ADD:
                 if(mac instanceof MotorolaGroupRegroupAddCommand mgrac)
                 {
-                    if(mPatchGroupManager.addPatchGroup(mgrac.getPatchGroup()))
+                    if(mPatchGroupManager.addPatchGroup(mgrac.getPatchGroup(), message.getTimestamp()))
                     {
                         broadcast(message, mac, DecodeEventType.DYNAMIC_REGROUP, "ACTIVATE " + mgrac.getPatchGroup());
                     }
@@ -1411,7 +1415,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                     .channel(getCurrentChannel())
                     .details(p1 ? "PRIORITY " : "" + "USER PAGE-RETURN TO CONTROL CHANNEL")
-                    .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress1()))
+                    .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress1(), message.getTimestamp()))
                     .timeslot(getTimeslot())
                     .build());
 
@@ -1421,7 +1425,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                         .channel(getCurrentChannel())
                         .details(p2 ? "PRIORITY " : "" + "USER PAGE-RETURN TO CONTROL CHANNEL")
-                        .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress2()))
+                        .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress2(), message.getTimestamp()))
                         .timeslot(getTimeslot())
                         .build());
 
@@ -1431,7 +1435,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                     broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                             .channel(getCurrentChannel())
                             .details(p3 ? "PRIORITY " : "" + "USER PAGE-RETURN TO CONTROL CHANNEL")
-                            .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress3()))
+                            .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress3(), message.getTimestamp()))
                             .timeslot(getTimeslot())
                             .build());
 
@@ -1441,7 +1445,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                         broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                                 .channel(getCurrentChannel())
                                 .details(p4 ? "PRIORITY " : "" + "USER PAGE-RETURN TO CONTROL CHANNEL")
-                                .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress4()))
+                                .identifiers(getIdentifierCollectionForUser(ip.getTargetAddress4(), message.getTimestamp()))
                                 .timeslot(getTimeslot())
                                 .build());
                     }
@@ -1453,7 +1457,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                     .channel(getCurrentChannel())
                     .details("GROUP PAGE - TALKGROUP IS ACTIVE ON SITE")
-                    .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup1()))
+                    .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup1(), message.getTimestamp()))
                     .timeslot(getTimeslot())
                     .build());
 
@@ -1462,7 +1466,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                         .channel(getCurrentChannel())
                         .details("GROUP PAGE - TALKGROUP IS ACTIVE ON SITE")
-                        .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup2()))
+                        .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup2(), message.getTimestamp()))
                         .timeslot(getTimeslot())
                         .build());
 
@@ -1471,7 +1475,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                     broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                             .channel(getCurrentChannel())
                             .details("GROUP PAGE - TALKGROUP IS ACTIVE ON SITE")
-                            .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup3()))
+                            .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup3(), message.getTimestamp()))
                             .timeslot(getTimeslot())
                             .build());
 
@@ -1480,7 +1484,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                         broadcast(P25DecodeEvent.builder(DecodeEventType.PAGE, message.getTimestamp())
                                 .channel(getCurrentChannel())
                                 .details("GROUP PAGE - TALKGROUP IS ACTIVE ON SITE")
-                                .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup4()))
+                                .identifiers(getIdentifierCollectionForUser(igp.getTargetGroup4(), message.getTimestamp()))
                                 .timeslot(getTimeslot())
                                 .build());
                     }

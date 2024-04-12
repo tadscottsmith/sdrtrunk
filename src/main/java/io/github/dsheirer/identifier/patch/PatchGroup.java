@@ -110,6 +110,16 @@ public class PatchGroup
     }
 
     /**
+     * Removes the patched talkgroup from this patch group.
+     * @param talkgroup to remove
+     */
+    public void removePatchedTalkgroup(TalkgroupIdentifier talkgroup)
+    {
+        mPatchedTalkgroupIdentifiers.remove(talkgroup);
+    }
+
+
+    /**
      * Adds a list of talkgroup identifiers to this patched group.
      * @param patchedGroupIdentifiers to add
      */
@@ -147,6 +157,15 @@ public class PatchGroup
         }
 
         return false;
+    }
+
+    /**
+     * Removes the patched radio from this patch group.
+     * @param radioIdentifier to remove
+     */
+    public void removePatchedRadio(RadioIdentifier radioIdentifier)
+    {
+        mPatchedRadioIdentifiers.remove(radioIdentifier);
     }
 
     /**

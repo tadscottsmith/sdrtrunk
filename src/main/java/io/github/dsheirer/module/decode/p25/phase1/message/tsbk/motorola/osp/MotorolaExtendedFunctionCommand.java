@@ -64,6 +64,7 @@ public class MotorolaExtendedFunctionCommand extends VendorOSPMessage
         StringBuilder sb = new StringBuilder();
         sb.append(getMessageStub());
         sb.append(" ").append(getDescription());
+        sb.append(" FOR RADIO:").append(getTargetAddress());
         return super.toString();
     }
 
@@ -108,6 +109,11 @@ public class MotorolaExtendedFunctionCommand extends VendorOSPMessage
         if(mSupergroup == null)
         {
             mSupergroup = APCO25PatchGroup.create(getInt(ARGUMENTS));
+
+            if(isSupergroupCreate())
+            {
+                mSupergroup.getValue().addPatchedRadio(getTargetAddress());
+            }
         }
 
         return mSupergroup;

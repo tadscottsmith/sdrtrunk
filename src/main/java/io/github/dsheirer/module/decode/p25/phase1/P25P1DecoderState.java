@@ -258,7 +258,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         {
             if(identifier instanceof PatchGroupIdentifier patchGroupIdentifier)
             {
-                mPatchGroupManager.addPatchGroup(patchGroupIdentifier);
+                mPatchGroupManager.addPatchGroup(patchGroupIdentifier, preLoadDataContent.getTimestamp());
             }
         }
     }
@@ -271,12 +271,6 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(iMessage instanceof P25P1Message message)
         {
-            if(message.toString().contains("IPPKT"))
-            {
-                List<Identifier> identifiers = message.getIdentifiers();
-                int a = 0;
-            }
-
             getIdentifierCollection().update(message.getNAC());
 
             switch(message.getDUID())
@@ -334,7 +328,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     {
         if(apco25Channel.getValue().getDownlinkFrequency() > 0)
         {
-            MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers);
+            MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers, timestamp);
             mTrafficChannelManager.processP1ChannelGrant(apco25Channel, serviceOptions, mic, opcode, timestamp);
         }
     }
@@ -350,7 +344,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
     private void processChannelUpdate(APCO25Channel channel, ServiceOptions serviceOptions, List<Identifier> identifiers,
                                       Opcode opcode, long timestamp)
     {
-        MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers);
+        MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers, timestamp);
         mTrafficChannelManager.processP1ChannelUpdate(channel, serviceOptions, mic, opcode, timestamp);
     }
 
@@ -382,7 +376,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      */
     private void processLCChannelUser(LinkControlWord lcw, long timestamp)
     {
-        List<Identifier> updated = mPatchGroupManager.update(lcw.getIdentifiers());
+        List<Identifier> updated = mPatchGroupManager.update(lcw.getIdentifiers(), timestamp);
         getIdentifierCollection().update(updated);
         DecodeEventType decodeEventType = getLCDecodeEventType(lcw);
         ServiceOptions serviceOptions = lcw.isEncrypted() ? VoiceServiceOptions.createEncrypted() :
@@ -422,7 +416,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      */
     private void broadcastEvent(List<Identifier> identifiers, long timestamp, DecodeEventType decodeEventType, String details)
     {
-        MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers);
+        MutableIdentifierCollection mic = getMutableIdentifierCollection(identifiers, timestamp);
 
         broadcast(P25DecodeEvent.builder(decodeEventType, timestamp)
                 .channel(getCurrentChannel())
@@ -435,16 +429,17 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      * Creates a copy of the current identifier collection, removes any USER identifiers and adds the argument identifiers
      * passing each identifier through the patch group manager to replace with a patch group if it exists
      * @param identifiers to add to the collection copy
+     * @param timestamp to check for freshness of patch group info.
      * @return collection
      */
-    private MutableIdentifierCollection getMutableIdentifierCollection(List<Identifier> identifiers)
+    private MutableIdentifierCollection getMutableIdentifierCollection(List<Identifier> identifiers, long timestamp)
     {
         MutableIdentifierCollection requestCollection = new MutableIdentifierCollection(getIdentifierCollection().getIdentifiers());
         requestCollection.remove(IdentifierClass.USER);
 
         for(Identifier identifier: identifiers)
         {
-            requestCollection.update(mPatchGroupManager.update(identifier));
+            requestCollection.update(mPatchGroupManager.update(identifier, timestamp));
         }
 
         return requestCollection;
@@ -454,11 +449,12 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
      * Creates a copy of the current identifier collection, removes any USER identifiers and adds the argument identifier
      * passed through the patch group manager to replace with a patch group if it exists
      * @param identifier to add to the collection copy
+     * @param timestamp to check for freshness of patch group info.
      * @return collection
      */
-    private MutableIdentifierCollection getMutableIdentifierCollection(Identifier identifier)
+    private MutableIdentifierCollection getMutableIdentifierCollection(Identifier identifier, long timestamp)
     {
-        return getMutableIdentifierCollection(Collections.singletonList(identifier));
+        return getMutableIdentifierCollection(Collections.singletonList(identifier), timestamp);
     }
 
     /**
@@ -772,7 +768,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
             HeaderData headerData = hdu.getHeaderData();
             ServiceOptions serviceOptions = headerData.isEncryptedAudio() ?
                     VoiceServiceOptions.createEncrypted() : VoiceServiceOptions.createUnencrypted();
-            MutableIdentifierCollection mic = getMutableIdentifierCollection(hdu.getIdentifiers());
+            MutableIdentifierCollection mic = getMutableIdentifierCollection(hdu.getIdentifiers(), message.getTimestamp());
             String details = headerData.isEncryptedAudio() ? headerData.getEncryptionKey().toString() : null;
             DecodeEventType type = headerData.isEncryptedAudio() ? DecodeEventType.CALL_ENCRYPTED : DecodeEventType.CALL;
             mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), getCurrentChannel(), type,
@@ -884,7 +880,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         {
             broadcastEvent(message.getIdentifiers(), message.getTimestamp(), DecodeEventType.RESPONSE, response.getResponseText());
         }
-        else if(message.isValid() && message instanceof PDUSequenceMessage pdu)
+        else if(message.isValid() && message instanceof PDUSequenceMessage pdu && pdu.getPDUSequence().isComplete())
         {
             broadcastEvent(pdu.getIdentifiers(), message.getTimestamp(), DecodeEventType.DATA_PACKET, pdu.toString());
         }
@@ -935,7 +931,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                     if(udpPayload instanceof ARSPacket arsPacket)
                     {
-                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                         DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.AUTOMATIC_REGISTRATION_SERVICE,
                                         message.getTimestamp())
@@ -948,7 +944,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     }
                     else if(udpPayload instanceof MCGPPacket mcgp)
                     {
-                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                         DecodeEvent cellocatorEvent = P25DecodeEvent.builder(DecodeEventType.CELLOCATOR,
                                         message.getTimestamp())
@@ -961,7 +957,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     }
                     else if(udpPayload instanceof LRRPPacket lrrpPacket)
                     {
-                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                         DecodeEvent lrrpEvent = P25DecodeEvent.builder(DecodeEventType.LRRP, message.getTimestamp())
                                 .channel(getCurrentChannel())
@@ -989,7 +985,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     }
                     else
                     {
-                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                        MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                         DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.UDP_PACKET, message.getTimestamp())
                                 .channel(getCurrentChannel())
@@ -1002,7 +998,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 else if(ipPayload instanceof ICMPPacket)
                 {
-                    MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                     DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.ICMP_PACKET, message.getTimestamp())
                             .channel(getCurrentChannel())
@@ -1014,7 +1010,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 else
                 {
-                    MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                     DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.IP_PACKET, message.getTimestamp())
                             .channel(getCurrentChannel())
@@ -1027,7 +1023,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
             }
             else if(packet instanceof UnknownPacket)
             {
-                MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers());
+                MutableIdentifierCollection mic = getMutableIdentifierCollection(message.getIdentifiers(), message.getTimestamp());
 
                 DecodeEvent packetEvent = P25DecodeEvent.builder(DecodeEventType.UNKNOWN_PACKET, message.getTimestamp())
                         .channel(getCurrentChannel())
@@ -1268,7 +1264,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                 //MOTOROLA PATCH GROUP OPCODES
                 case MOTOROLA_OSP_GROUP_REGROUP_ADD:
-                    mPatchGroupManager.addPatchGroups(tsbk.getIdentifiers());
+                    mPatchGroupManager.addPatchGroups(tsbk.getIdentifiers(), message.getTimestamp());
                     break;
                 case MOTOROLA_OSP_GROUP_REGROUP_DELETE:
                     mPatchGroupManager.removePatchGroups(tsbk.getIdentifiers());
@@ -1280,7 +1276,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                     {
                         if(regroup.getRegroupOptions().isActivate())
                         {
-                            mPatchGroupManager.addPatchGroup(regroup.getPatchGroup());
+                            mPatchGroupManager.addPatchGroup(regroup.getPatchGroup(), tsbk.getTimestamp());
                         }
                         else
                         {
@@ -1598,7 +1594,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
         {
             if(mefc.isSupergroupCreate())
             {
-                mPatchGroupManager.addPatchGroup(mefc.getSuperGroup());
+                mPatchGroupManager.addPatchGroup(mefc.getSuperGroup(), tsbk.getTimestamp());
                 broadcastEvent(tsbk, DecodeEventType.COMMAND, "CREATE SUPERGROUP:" + mefc.getSuperGroup());
             }
             else if(mefc.isSupergroupCancel())
@@ -1806,13 +1802,13 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                 if(lcw instanceof LCGroupVoiceChannelUpdate vcu)
                 {
-                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getGroupAddressA());
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getGroupAddressA(), timestamp);
                     mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannelA(), null, mic,
                             null, timestamp);
 
                     if(vcu.hasChannelB())
                     {
-                        MutableIdentifierCollection micB = getMutableIdentifierCollection(vcu.getGroupAddressB());
+                        MutableIdentifierCollection micB = getMutableIdentifierCollection(vcu.getGroupAddressB(), timestamp);
                         mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannelB(), null, micB,
                                 null, timestamp);
                     }
@@ -1826,7 +1822,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                 if(lcw instanceof LCGroupVoiceChannelUpdateExplicit vcu)
                 {
-                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getGroupAddress());
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getGroupAddress(), timestamp);
                     mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannel(), vcu.getServiceOptions(), mic,
                             null, timestamp);
                 }
@@ -1938,7 +1934,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
             //Patch Group management
             case MOTOROLA_GROUP_REGROUP_ADD:
-                mPatchGroupManager.addPatchGroups(lcw.getIdentifiers());
+                mPatchGroupManager.addPatchGroups(lcw.getIdentifiers(), timestamp);
                 break;
             case MOTOROLA_GROUP_REGROUP_DELETE:
                 mPatchGroupManager.removePatchGroups(lcw.getIdentifiers());
@@ -1951,7 +1947,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
 
                 if(lcw instanceof LCMotorolaGroupRegroupVoiceChannelUpdate vcu)
                 {
-                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getSupergroupAddress());
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(vcu.getSupergroupAddress(), timestamp);
                     mTrafficChannelManager.processP1ChannelUpdate(vcu.getChannel(), vcu.getServiceOptions(), mic,
                             null, timestamp);
                 }
@@ -2090,7 +2086,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 if(lcw instanceof LCMotorolaUnitGPS gps)
                 {
                     mTrafficChannelManager.processP1CurrentUser(getCurrentFrequency(), gps.getLocation(), timestamp);
-                    MutableIdentifierCollection mic = getMutableIdentifierCollection(gps.getIdentifiers());
+                    MutableIdentifierCollection mic = getMutableIdentifierCollection(gps.getIdentifiers(), timestamp);
 
                     PlottableDecodeEvent event = PlottableDecodeEvent.plottableBuilder(DecodeEventType.GPS, timestamp)
                             .location(gps.getGeoPosition())

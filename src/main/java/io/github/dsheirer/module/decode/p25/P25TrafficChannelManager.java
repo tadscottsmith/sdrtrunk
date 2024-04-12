@@ -231,13 +231,10 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     {
         if(mDecodeEventListener != null)
         {
-            synchronized(mDuplicateDetector)
+            if(decodeEvent.getEventType() == DecodeEventType.DATA_CALL &&
+                    mDuplicateDetector.isDuplicate(decodeEvent, System.currentTimeMillis()))
             {
-                if(decodeEvent.getEventType() == DecodeEventType.DATA_CALL &&
-                        mDuplicateDetector.isDuplicate(decodeEvent, System.currentTimeMillis()))
-                {
-                    return;
-                }
+                return;
             }
 
             mDecodeEventListener.receive(decodeEvent);
@@ -825,15 +822,15 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                 if(currentFrom != null && !from.equals(currentFrom))
                 {
                     event.end(timestamp);
+                    broadcast(event);
 
-                    P25ChannelGrantEvent continuationGrantEvent = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
+                    event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
                         .channelDescriptor(apco25Channel)
                         .details("CONTINUE - PHASE 1 CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""))
                         .identifiers(identifierCollection)
                         .build();
 
-                    mTS1ChannelGrantEventMap.put(frequency, continuationGrantEvent);
-                    broadcast(continuationGrantEvent);
+                    mTS1ChannelGrantEventMap.put(frequency, event);
                 }
             }
 
@@ -849,7 +846,14 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
                 if(trafficChannel != null)
                 {
-                    event.setDetails("PHASE 1 CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""));
+                    if(isDataChannelGrant)
+                    {
+                        event.setDetails("PHASE 1 DATA CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""));
+                    }
+                    else
+                    {
+                        event.setDetails("PHASE 1 CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""));
+                    }
                     event.setChannelDescriptor(apco25Channel);
                     broadcast(event);
                     SourceConfigTuner sourceConfig = new SourceConfigTuner();
@@ -863,7 +867,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
                     ChannelStartProcessingRequest startChannelRequest = new ChannelStartProcessingRequest(trafficChannel,
                             apco25Channel, identifierCollection, this);
-                    startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection));
+                    startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
                     getInterModuleEventBus().post(startChannelRequest);
                 }
             }
@@ -871,26 +875,30 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             return event;
         }
 
-        if(mIgnoreDataCalls && isDataChannelGrant)
+        if(mIgnoreDataCalls && isDataChannelGrant && event == null)
         {
-            P25ChannelGrantEvent channelGrantEvent = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
+            event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
                 .channelDescriptor(apco25Channel)
-                .details("DATA CALL IGNORED: " + (serviceOptions != null ? serviceOptions : ""))
+                .details("IGNORED: PHASE 1 DATA CALL " + (serviceOptions != null ? serviceOptions : ""))
                 .identifiers(identifierCollection)
                 .build();
-
-            mTS1ChannelGrantEventMap.put(frequency, channelGrantEvent);
-            broadcast(channelGrantEvent);
-            return channelGrantEvent;
+            mTS1ChannelGrantEventMap.put(frequency, event);
+            broadcast(event);
+            return event;
         }
 
-        P25ChannelGrantEvent channelGrantEvent = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
+        event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
             .channelDescriptor(apco25Channel)
             .details("PHASE 1 CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""))
             .identifiers(identifierCollection)
             .build();
 
-        mTS1ChannelGrantEventMap.put(frequency, channelGrantEvent);
+        if(isDataChannelGrant)
+        {
+            event.setDetails("PHASE 1 DATA CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""));
+        }
+
+        mTS1ChannelGrantEventMap.put(frequency, event);
 
         //Allocate a traffic channel for the downlink frequency if one isn't already allocated
         if(!mAllocatedTrafficChannelMap.containsKey(frequency))
@@ -899,8 +907,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             if(trafficChannel == null)
             {
-                channelGrantEvent.setDetails(MAX_TRAFFIC_CHANNELS_EXCEEDED + " - IGNORED");
-                return channelGrantEvent;
+                event.setDetails(MAX_TRAFFIC_CHANNELS_EXCEEDED + " - " + (event.getDetails() != null ? event.getDetails() : ""));
+                return event;
             }
 
             SourceConfigTuner sourceConfig = new SourceConfigTuner();
@@ -914,7 +922,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             ChannelStartProcessingRequest startChannelRequest =
                     new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
-            startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection));
+            startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
 
             if(getInterModuleEventBus() != null)
             {
@@ -922,9 +930,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             }
         }
 
-        broadcast(channelGrantEvent);
-
-        return channelGrantEvent;
+        broadcast(event);
+        return event;
     }
 
 
@@ -1012,9 +1019,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             //Even though we have an event, the initial channel grant may have been rejected.  Check to see if there
             //is a traffic channel allocated.  If not, allocate one and update the event description.
-            if(!mAllocatedTrafficChannelMap.containsKey(frequency) &&
-                   !(mIgnoreDataCalls && isDataChannelGrant) &&
-                        (getCurrentControlFrequency() != frequency))
+            if(!mAllocatedTrafficChannelMap.containsKey(frequency) && !(mIgnoreDataCalls && isDataChannelGrant) &&
+                (getCurrentControlFrequency() != frequency))
             {
                 Channel trafficChannel = mAvailablePhase2TrafficChannelQueue.poll();
 
@@ -1041,7 +1047,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
                     ChannelStartProcessingRequest startChannelRequest =
                             new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
-                    startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection));
+                    startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
                     getInterModuleEventBus().post(startChannelRequest);
                 }
             }
@@ -1049,21 +1055,20 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             return event;
         }
 
-        if(mIgnoreDataCalls && isDataChannelGrant)
+        if(mIgnoreDataCalls && isDataChannelGrant && event == null)
         {
-            P25ChannelGrantEvent channelGrantEvent = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
+           event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
                 .channelDescriptor(apco25Channel)
                 .details("PHASE 2 DATA CALL IGNORED: " + (serviceOptions != null ? serviceOptions : ""))
                 .identifiers(identifierCollection)
                 .build();
 
-            mTS1ChannelGrantEventMap.put(frequency, channelGrantEvent);
-
-            broadcast(channelGrantEvent);
+            mTS1ChannelGrantEventMap.put(frequency, event);
+            broadcast(event);
             return event;
         }
 
-        P25ChannelGrantEvent channelGrantEvent = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
+        event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
             .channelDescriptor(apco25Channel)
             .details("PHASE 2 CHANNEL GRANT " + (serviceOptions != null ? serviceOptions : ""))
             .identifiers(identifierCollection)
@@ -1071,26 +1076,22 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
         if(timeslot == P25P1Message.TIMESLOT_0 || timeslot == P25P1Message.TIMESLOT_1)
         {
-            mTS1ChannelGrantEventMap.put(frequency, channelGrantEvent);
+            mTS1ChannelGrantEventMap.put(frequency, event);
         }
         else
         {
-            mTS2ChannelGrantEventMap.put(frequency, channelGrantEvent);
+            mTS2ChannelGrantEventMap.put(frequency, event);
         }
 
         //Allocate a traffic channel for the downlink frequency if one isn't already allocated
-        if(!mAllocatedTrafficChannelMap.containsKey(apco25Channel.getDownlinkFrequency()) &&
-                apco25Channel.getDownlinkFrequency() != getCurrentControlFrequency())
+        if(!mAllocatedTrafficChannelMap.containsKey(frequency) && frequency != getCurrentControlFrequency())
         {
-            long currentControl = getCurrentControlFrequency();
-            long trafficFrequency = apco25Channel.getDownlinkFrequency();
-
             Channel trafficChannel = mAvailablePhase2TrafficChannelQueue.poll();
 
             if(trafficChannel == null)
             {
-                channelGrantEvent.setDetails(MAX_TRAFFIC_CHANNELS_EXCEEDED + " - IGNORED");
-                return channelGrantEvent;
+                event.setDetails(MAX_TRAFFIC_CHANNELS_EXCEEDED + " - IGNORED");
+                return event;
             }
 
             SourceConfigTuner sourceConfig = new SourceConfigTuner();
@@ -1104,12 +1105,12 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             ChannelStartProcessingRequest startChannelRequest =
                     new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
-            startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection));
+            startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
             getInterModuleEventBus().post(startChannelRequest);
         }
 
-        broadcast(channelGrantEvent);
-        return channelGrantEvent;
+        broadcast(event);
+        return event;
     }
 
     /**
@@ -1489,12 +1490,17 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                                     .ifPresent(rejectedFrequency -> {
                                         mAllocatedTrafficChannelMap.remove(rejectedFrequency);
                                         mAvailablePhase1TrafficChannelQueue.add(channel);
-                                        P25ChannelGrantEvent event = mTS1ChannelGrantEventMap.remove(rejectedFrequency);
-                                        if (event != null)
+
+                                        //Leave the event in the map so that it doesn't get recreated.  The channel
+                                        //processing manager set the 'tuner not available' in the details already
+                                        P25ChannelGrantEvent event = mTS1ChannelGrantEventMap.get(rejectedFrequency);
+
+                                        if(event != null && !event.getDetails().contains(CHANNEL_START_REJECTED))
                                         {
-                                            event.setDetails(CHANNEL_START_REJECTED + " - " + event.getDetails());
-                                            broadcast(event);
+                                            event.setDetails(CHANNEL_START_REJECTED + " " + channelEvent.getDescription() +
+                                                    (event.getDetails() != null ? " - " + event.getDetails() : ""));
                                         }
+                                        broadcast(event);
                                     });
                             break;
                     }
@@ -1534,17 +1540,19 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                                         mAllocatedTrafficChannelMap.remove(rejectedFrequency);
                                         mAvailablePhase1TrafficChannelQueue.add(channel);
 
-                                        P25ChannelGrantEvent event1 = mTS1ChannelGrantEventMap.remove(rejectedFrequency);
+                                        //Leave the event in the map so that it doesn't get recreated.  The channel
+                                        //processing manager set the 'tuner not available' in the details already
+                                        P25ChannelGrantEvent event1 = mTS1ChannelGrantEventMap.get(rejectedFrequency);
                                         if (event1 != null)
                                         {
-                                            event1.setDetails(CHANNEL_START_REJECTED + " - " + event1.getDetails());
                                             broadcast(event1);
                                         }
 
-                                        P25ChannelGrantEvent event2 = mTS2ChannelGrantEventMap.remove(rejectedFrequency);
+                                        //Leave the event in the map so that it doesn't get recreated.  The channel
+                                        //processing manager set the 'tuner not available' in the details already
+                                        P25ChannelGrantEvent event2 = mTS2ChannelGrantEventMap.get(rejectedFrequency);
                                         if (event2 != null)
                                         {
-                                            event2.setDetails(CHANNEL_START_REJECTED + " - " + event2.getDetails());
                                             broadcast(event2);
                                         }
                                     });
