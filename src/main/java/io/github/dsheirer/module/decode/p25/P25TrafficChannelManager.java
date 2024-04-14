@@ -32,6 +32,7 @@ import io.github.dsheirer.identifier.IdentifierCollection;
 import io.github.dsheirer.identifier.MutableIdentifierCollection;
 import io.github.dsheirer.identifier.encryption.EncryptionKeyIdentifier;
 import io.github.dsheirer.identifier.patch.PatchGroupPreLoadDataContent;
+import io.github.dsheirer.identifier.radio.RadioIdentifier;
 import io.github.dsheirer.identifier.scramble.ScrambleParameterIdentifier;
 import io.github.dsheirer.log.LoggingSuppressor;
 import io.github.dsheirer.message.IMessage;
@@ -49,6 +50,7 @@ import io.github.dsheirer.module.decode.p25.identifier.channel.P25P2Channel;
 import io.github.dsheirer.module.decode.p25.identifier.channel.P25P2ExplicitChannel;
 import io.github.dsheirer.module.decode.p25.identifier.channel.StandardChannel;
 import io.github.dsheirer.module.decode.p25.phase1.DecodeConfigP25Phase1;
+import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBand;
 import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
 import io.github.dsheirer.module.decode.p25.phase1.message.pdu.ambtc.osp.AMBTCNetworkStatusBroadcast;
 import io.github.dsheirer.module.decode.p25.phase1.message.tsbk.Opcode;
@@ -103,6 +105,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     private Map<Long,Channel> mAllocatedTrafficChannelMap = new ConcurrentHashMap<>();
     private Map<Long,P25ChannelGrantEvent> mTS1ChannelGrantEventMap = new ConcurrentHashMap<>();
     private Map<Long,P25ChannelGrantEvent> mTS2ChannelGrantEventMap = new ConcurrentHashMap<>();
+    private Map<Integer, IFrequencyBand> mFrequencyBandMap = new ConcurrentHashMap<>();
     private Listener<ChannelEvent> mChannelEventListener;
     private Listener<IDecodeEvent> mDecodeEventListener;
     private TrafficChannelTeardownMonitor mTrafficChannelTeardownMonitor = new TrafficChannelTeardownMonitor();
@@ -138,23 +141,43 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     }
 
     /**
+     * Stores the frequency band (aka Identifier Update) to use for preload data in starting a new traffic channel.
+     * @param frequencyBand to store
+     */
+    public void processFrequencyBand(IFrequencyBand frequencyBand)
+    {
+        mFrequencyBandMap.put(frequencyBand.getIdentifier(), frequencyBand);
+    }
+
+    /**
      * Notification that the control channel frequency is updated and removes any traffic channel that may be running
      * against the same frequency.
      * @param previous frequency (before this update)
      * @param current frequency
-     * @param channel configuration
+     * @param parentChannel configuration
      */
     @Override
-    protected void processControlFrequencyUpdate(long previous, long current, Channel channel)
+    protected void processControlFrequencyUpdate(long previous, long current, Channel parentChannel)
     {
+        System.out.println("Control channel change from [" + previous + "] to [" + current + "] for config [" + parentChannel + "]");
+        if(previous == current)
+        {
+            return;
+        }
+
         mLock.lock();
 
         try
         {
-            if(mAllocatedTrafficChannelMap.containsKey(current))
+            Channel channel = mAllocatedTrafficChannelMap.get(current);
+
+            if(!parentChannel.equals(channel))
             {
                 broadcast(new ChannelEvent(mAllocatedTrafficChannelMap.get(current), Event.REQUEST_DISABLE));
             }
+
+            //Store the control channel in the allocated channel map so that we don't allocate a traffic channel against it
+            mAllocatedTrafficChannelMap.put(current, parentChannel);
         }
         finally
         {
@@ -254,35 +277,27 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
      * @param macOpcode for the update message
      * @param timestamp of the message
      */
-    public DecodeEvent processP2ChannelUpdate(APCO25Channel channel, ServiceOptions serviceOptions,
-                                              IdentifierCollection ic, MacOpcode macOpcode, long timestamp)
+    public void processP2ChannelUpdate(APCO25Channel channel, ServiceOptions serviceOptions,
+                                       IdentifierCollection ic, MacOpcode macOpcode, long timestamp)
     {
-        DecodeEvent event = null;
-
-        mLock.lock();
-
-        try
+        if(channel.getDownlinkFrequency() > 0)
         {
-            event = channel.getTimeslot() == 1 ?
-                    mTS1ChannelGrantEventMap.get(channel.getDownlinkFrequency()) :
-                    mTS2ChannelGrantEventMap.get(channel.getDownlinkFrequency());
+            mLock.lock();
 
-            if(event != null && isSameCallUpdate(event.getIdentifierCollection(), ic))
+            try
             {
-                event.update(timestamp);
-                broadcast(event);
+                boolean processing = mAllocatedTrafficChannelMap.containsKey(channel.getDownlinkFrequency());
+
+                if(!processing)
+                {
+                    processP2ChannelGrant(channel, serviceOptions, ic, macOpcode, timestamp);
+                }
             }
-            else
+            finally
             {
-                event = processP2ChannelGrant(channel, serviceOptions, ic, macOpcode, timestamp);
+                mLock.unlock();
             }
         }
-        finally
-        {
-            mLock.unlock();
-        }
-
-        return event;
     }
 
     /**
@@ -437,6 +452,11 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                         }
                     }
 
+                    if(event.getChannelDescriptor() == null)
+                    {
+                        event.setChannelDescriptor(channelDescriptor);
+                    }
+
                     broadcast(event);
                     return event.getChannelDescriptor();
                 }
@@ -478,11 +498,9 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
      * @param identifierCollection associated with the channel grant
      * @param macOpcode to identify the call type for the event description
      */
-    public DecodeEvent processP2ChannelGrant(APCO25Channel apco25Channel, ServiceOptions serviceOptions,
+    public void processP2ChannelGrant(APCO25Channel apco25Channel, ServiceOptions serviceOptions,
                                              IdentifierCollection identifierCollection, MacOpcode macOpcode, long timestamp)
     {
-        DecodeEvent event = null;
-
         mLock.lock();
 
         try
@@ -498,13 +516,13 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                     if(macOpcode.isDataChannelGrant())
                     {
                         APCO25Channel phase1Channel = convertPhase2ToPhase1(apco25Channel);
-                        event = processPhase1ChannelGrant(phase1Channel, serviceOptions, identifierCollection,
-                                                            decodeEventType, isDataChannelGrant, timestamp);
+                        processPhase1ChannelGrant(phase1Channel, serviceOptions, identifierCollection,
+                                                  decodeEventType, isDataChannelGrant, timestamp);
                     }
                     else
                     {
-                        event = processPhase2ChannelGrant(apco25Channel, serviceOptions, identifierCollection,
-                                                            decodeEventType, isDataChannelGrant, timestamp);
+                        processPhase2ChannelGrant(apco25Channel, serviceOptions, identifierCollection,
+                                                  decodeEventType, isDataChannelGrant, timestamp);
 
                         //Hack: set the IDLE/NULL protect flag so that this event doesn't get immediately closed on
                         //L3Harris control channels.
@@ -519,7 +537,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             }
             else
             {
-                event = processPhase1ChannelGrant(apco25Channel, serviceOptions, identifierCollection, decodeEventType,
+                processPhase1ChannelGrant(apco25Channel, serviceOptions, identifierCollection, decodeEventType,
                         isDataChannelGrant, timestamp);
             }
 
@@ -528,8 +546,6 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
         {
             mLock.unlock();
         }
-
-        return event;
     }
 
         /**
@@ -804,7 +820,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
      * @param isDataChannelGrant indicator if this is a data channel grant
      * @param timestamp for the grant event.
      */
-    private DecodeEvent processPhase1ChannelGrant(APCO25Channel apco25Channel, ServiceOptions serviceOptions,
+    private void processPhase1ChannelGrant(APCO25Channel apco25Channel, ServiceOptions serviceOptions,
                                     IdentifierCollection identifierCollection, DecodeEventType decodeEventType,
                                     boolean isDataChannelGrant, long timestamp)
     {
@@ -868,11 +884,12 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                     ChannelStartProcessingRequest startChannelRequest = new ChannelStartProcessingRequest(trafficChannel,
                             apco25Channel, identifierCollection, this);
                     startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
+                    startChannelRequest.addPreloadDataContent(new P25FrequencyBandPreloadDataContent(mFrequencyBandMap.values()));
                     getInterModuleEventBus().post(startChannelRequest);
                 }
             }
 
-            return event;
+            return;
         }
 
         if(mIgnoreDataCalls && isDataChannelGrant && event == null)
@@ -884,7 +901,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                 .build();
             mTS1ChannelGrantEventMap.put(frequency, event);
             broadcast(event);
-            return event;
+            return;
         }
 
         event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
@@ -908,7 +925,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             if(trafficChannel == null)
             {
                 event.setDetails(MAX_TRAFFIC_CHANNELS_EXCEEDED + " - " + (event.getDetails() != null ? event.getDetails() : ""));
-                return event;
+                return;
             }
 
             SourceConfigTuner sourceConfig = new SourceConfigTuner();
@@ -923,6 +940,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             ChannelStartProcessingRequest startChannelRequest =
                     new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
             startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
+            startChannelRequest.addPreloadDataContent(new P25FrequencyBandPreloadDataContent(mFrequencyBandMap.values()));
 
             if(getInterModuleEventBus() != null)
             {
@@ -931,7 +949,6 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
         }
 
         broadcast(event);
-        return event;
     }
 
 
@@ -1048,6 +1065,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                     ChannelStartProcessingRequest startChannelRequest =
                             new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
                     startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
+                    startChannelRequest.addPreloadDataContent(new P25FrequencyBandPreloadDataContent(mFrequencyBandMap.values()));
                     getInterModuleEventBus().post(startChannelRequest);
                 }
             }
@@ -1106,6 +1124,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             ChannelStartProcessingRequest startChannelRequest =
                     new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
             startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
+            startChannelRequest.addPreloadDataContent(new P25FrequencyBandPreloadDataContent(mFrequencyBandMap.values()));
             getInterModuleEventBus().post(startChannelRequest);
         }
 
@@ -1129,13 +1148,21 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
         switch(macOpcode)
         {
             case PUSH_TO_TALK:
+                if(current != null)
+                {
+                    type = current;
+                }
+                else
+                {
+                    type = encrypted ? DecodeEventType.CALL_GROUP_ENCRYPTED : DecodeEventType.CALL_GROUP;
+                }
+                break;
             case TDMA_01_GROUP_VOICE_CHANNEL_USER_ABBREVIATED:
             case TDMA_05_GROUP_VOICE_CHANNEL_GRANT_UPDATE_MULTIPLE_IMPLICIT:
             case TDMA_21_GROUP_VOICE_CHANNEL_USER_EXTENDED:
             case TDMA_25_GROUP_VOICE_CHANNEL_GRANT_UPDATE_MULTIPLE_EXPLICIT:
             case PHASE1_40_GROUP_VOICE_CHANNEL_GRANT_IMPLICIT:
             case PHASE1_42_GROUP_VOICE_CHANNEL_GRANT_UPDATE_IMPLICIT:
-            case PHASE1_90_GROUP_REGROUP_VOICE_CHANNEL_USER_ABBREVIATED:
             case PHASE1_C0_GROUP_VOICE_CHANNEL_GRANT_EXPLICIT:
             case PHASE1_C3_GROUP_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
                 type = encrypted ? DecodeEventType.CALL_GROUP_ENCRYPTED : DecodeEventType.CALL_GROUP;
@@ -1143,6 +1170,7 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             case MOTOROLA_80_GROUP_REGROUP_VOICE_CHANNEL_USER_ABBREVIATED:
             case MOTOROLA_83_GROUP_REGROUP_VOICE_CHANNEL_UPDATE:
+            case PHASE1_90_GROUP_REGROUP_VOICE_CHANNEL_USER_ABBREVIATED:
             case MOTOROLA_A0_GROUP_REGROUP_VOICE_CHANNEL_USER_EXTENDED:
             case MOTOROLA_A3_GROUP_REGROUP_CHANNEL_GRANT_IMPLICIT:
             case MOTOROLA_A4_GROUP_REGROUP_CHANNEL_GRANT_EXPLICIT:
@@ -1333,7 +1361,12 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             Identifier from2 = collection2.getFromIdentifier();
 
-            if(from2.getForm() == Form.TALKER_ALIAS)
+            if(from2 != null && from2.getForm() == Form.TALKER_ALIAS)
+            {
+                return true;
+            }
+
+            if(from2 instanceof RadioIdentifier radio && radio.getValue() == 0)
             {
                 return true;
             }

@@ -20,6 +20,7 @@ package io.github.dsheirer.module.decode.p25.phase1;
 
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.message.IMessage;
+import io.github.dsheirer.module.decode.p25.P25FrequencyBandPreloadDataContent;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBand;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.ExtendedSourceLinkControlWord;
@@ -61,6 +62,21 @@ public class P25P1MessageProcessor implements Listener<IMessage>
 
     public P25P1MessageProcessor()
     {
+    }
+
+    /**
+     * Preloads frequency band information from the control channel.
+     * @param content to preload
+     */
+    public void preload(P25FrequencyBandPreloadDataContent content)
+    {
+        if(content.hasData())
+        {
+            for(IFrequencyBand frequencyBand: content.getData())
+            {
+                mFrequencyBandMap.put(frequencyBand.getIdentifier(), frequencyBand);
+            }
+        }
     }
 
     @Override

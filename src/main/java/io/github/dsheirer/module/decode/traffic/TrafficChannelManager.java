@@ -48,13 +48,13 @@ public abstract class TrafficChannelManager extends Module
     /**
      * Sets the current control frequency.
      * @param frequency that is now the control frequency
-     * @param parent channel configuration
+     * @param parentChannel channel configuration
      */
-    public void setCurrentControlFrequency(long frequency, Channel parent)
+    public void setCurrentControlFrequency(long frequency, Channel parentChannel)
     {
         long previous = mCurrentControlFrequency;
         mCurrentControlFrequency = frequency;
-        processControlFrequencyUpdate(previous, frequency, parent);
+        processControlFrequencyUpdate(previous, frequency, parentChannel);
     }
 
     /**

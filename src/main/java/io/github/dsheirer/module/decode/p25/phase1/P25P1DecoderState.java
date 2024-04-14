@@ -55,6 +55,7 @@ import io.github.dsheirer.module.decode.ip.udp.UDPPacket;
 import io.github.dsheirer.module.decode.p25.P25DecodeEvent;
 import io.github.dsheirer.module.decode.p25.P25TrafficChannelManager;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
+import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBand;
 import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
 import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HDUMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HeaderData;
@@ -1149,6 +1150,12 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case OSP_PROTECTION_PARAMETER_BROADCAST:
                 case OSP_PROTECTION_PARAMETER_UPDATE:
                     mNetworkConfigurationMonitor.process(tsbk);
+
+                    //Send the frequency bands to the traffic channel manager to use for traffic channel preload data
+                    if(tsbk instanceof IFrequencyBand frequencyBand)
+                    {
+                        mTrafficChannelManager.processFrequencyBand(frequencyBand);
+                    }
                     break;
                 case OSP_NETWORK_STATUS_BROADCAST:
                     if((getCurrentChannel() == null || getCurrentChannel().getDownlinkFrequency() > 0) &&

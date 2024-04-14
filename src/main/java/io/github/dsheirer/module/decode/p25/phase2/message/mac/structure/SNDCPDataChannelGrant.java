@@ -65,7 +65,7 @@ public class SNDCPDataChannelGrant extends MacStructureDataService
     {
         StringBuilder sb = new StringBuilder();
         sb.append(getOpcode());
-        sb.append(" TO:").append(getTargetAddress());
+        sb.append(" TO:").append(getPatchgroup());
         sb.append(" CHAN:").append(getChannel());
         sb.append(" ").append(getServiceOptions());
         return sb.toString();
@@ -88,7 +88,7 @@ public class SNDCPDataChannelGrant extends MacStructureDataService
     /**
      * To Talkgroup
      */
-    public Identifier getTargetAddress()
+    public Identifier getPatchgroup()
     {
         if(mTargetAddress == null)
         {
@@ -112,7 +112,7 @@ public class SNDCPDataChannelGrant extends MacStructureDataService
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getTargetAddress());
+            mIdentifiers.add(getPatchgroup());
             mIdentifiers.add(getChannel());
         }
 

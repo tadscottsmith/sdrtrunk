@@ -23,9 +23,11 @@ import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.talkgroup.TalkgroupIdentifier;
 import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
+import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.MacStructureVendor;
@@ -48,7 +50,7 @@ public class MotorolaGroupRegroupVoiceChannelUpdate extends MacStructureVendor i
 
     private VoiceServiceOptions mServiceOptions;
     private List<Identifier> mIdentifiers;
-    private TalkgroupIdentifier mSupergroup;
+    private PatchGroupIdentifier mPatchgroup;
     private APCO25Channel mChannel;
 
     /**
@@ -73,7 +75,7 @@ public class MotorolaGroupRegroupVoiceChannelUpdate extends MacStructureVendor i
         {
             sb.append(" ENCRYPTED");
         }
-        sb.append(" SUPERGROUP:").append(getSupergroup());
+        sb.append(" SUPERGROUP:").append(getPatchgroup());
         sb.append(" IS ACTIVE ON CHANNEL:").append(getChannel());
         return sb.toString();
     }
@@ -94,14 +96,14 @@ public class MotorolaGroupRegroupVoiceChannelUpdate extends MacStructureVendor i
     /**
      * Talkgroup active on this channel/timeslot.
      */
-    public TalkgroupIdentifier getSupergroup()
+    public PatchGroupIdentifier getPatchgroup()
     {
-        if(mSupergroup == null)
+        if(mPatchgroup == null)
         {
-            mSupergroup = APCO25Talkgroup.create(getInt(SUPERGROUP));
+            mPatchgroup = APCO25PatchGroup.create(getInt(SUPERGROUP));
         }
 
-        return mSupergroup;
+        return mPatchgroup;
     }
 
     /**
@@ -123,7 +125,7 @@ public class MotorolaGroupRegroupVoiceChannelUpdate extends MacStructureVendor i
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getSupergroup());
+            mIdentifiers.add(getPatchgroup());
         }
 
         return mIdentifiers;

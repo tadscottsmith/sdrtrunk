@@ -73,6 +73,14 @@ public class GroupVoiceChannelUserAbbreviated extends MacStructureGroupVoiceServ
         return mSourceAddress;
     }
 
+    /**
+     * Indicates if the source address is non-zero.
+     */
+    private boolean hasSourceAddress()
+    {
+        return getInt(SOURCE_ADDRESS) > 0;
+    }
+
     @Override
     public List<Identifier> getIdentifiers()
     {
@@ -80,7 +88,10 @@ public class GroupVoiceChannelUserAbbreviated extends MacStructureGroupVoiceServ
         {
             mIdentifiers = new ArrayList<>();
             mIdentifiers.add(getGroupAddress());
-            mIdentifiers.add(getSourceAddress());
+            if(hasSourceAddress())
+            {
+                mIdentifiers.add(getSourceAddress());
+            }
         }
 
         return mIdentifiers;

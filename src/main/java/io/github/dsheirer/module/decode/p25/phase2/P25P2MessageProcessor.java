@@ -21,6 +21,7 @@ package io.github.dsheirer.module.decode.p25.phase2;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.message.IMessage;
 import io.github.dsheirer.message.SyncLossMessage;
+import io.github.dsheirer.module.decode.p25.P25FrequencyBandPreloadDataContent;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBand;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase2.message.EncryptionSynchronizationSequence;
@@ -35,11 +36,12 @@ import io.github.dsheirer.module.decode.p25.phase2.timeslot.AbstractVoiceTimeslo
 import io.github.dsheirer.module.decode.p25.phase2.timeslot.Timeslot;
 import io.github.dsheirer.module.decode.p25.phase2.timeslot.Voice2Timeslot;
 import io.github.dsheirer.sample.Listener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class P25P2MessageProcessor implements Listener<IMessage>
 {
@@ -56,8 +58,26 @@ public class P25P2MessageProcessor implements Listener<IMessage>
     // conveys channel information so that the uplink/downlink frequencies can be calculated
     private Map<Integer,IFrequencyBand> mFrequencyBandMap = new TreeMap<Integer,IFrequencyBand>();
 
+    /**
+     * Constructs an instance
+     */
     public P25P2MessageProcessor()
     {
+    }
+
+    /**
+     * Preloads frequency band (ie identifier update) content from the control channel when this is a traffic channel.
+     * @param content to preload
+     */
+    public void preload(P25FrequencyBandPreloadDataContent content)
+    {
+        if(content.hasData())
+        {
+            for(IFrequencyBand frequencyBand: content.getData())
+            {
+                mFrequencyBandMap.put(frequencyBand.getIdentifier(), frequencyBand);
+            }
+        }
     }
 
     @Override

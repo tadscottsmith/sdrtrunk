@@ -62,7 +62,7 @@ public class TelephoneInterconnectVoiceChannelGrantImplicit extends MacStructure
     {
         StringBuilder sb = new StringBuilder();
         sb.append(getOpcode());
-        sb.append(" TO/FROM:").append(getTargetAddress());
+        sb.append(" TO/FROM:").append(getPatchgroup());
 
         if(hasCallTimer())
         {
@@ -121,7 +121,7 @@ public class TelephoneInterconnectVoiceChannelGrantImplicit extends MacStructure
     /**
      * Target address
      */
-    public Identifier getTargetAddress()
+    public Identifier getPatchgroup()
     {
         if(mTargetAddress == null)
         {
@@ -137,7 +137,7 @@ public class TelephoneInterconnectVoiceChannelGrantImplicit extends MacStructure
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getTargetAddress());
+            mIdentifiers.add(getPatchgroup());
             mIdentifiers.add(getChannel());
         }
 

@@ -22,11 +22,11 @@ package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure;
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.radio.RadioIdentifier;
-import io.github.dsheirer.identifier.talkgroup.TalkgroupIdentifier;
 import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
+import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
-import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.reference.ServiceOptions;
 import io.github.dsheirer.module.decode.p25.reference.VoiceServiceOptions;
 
@@ -38,10 +38,10 @@ import java.util.List;
  */
 public class GroupRegroupVoiceChannelUserAbbreviated extends MacStructure implements IServiceOptionsProvider
 {
-    private static final IntField TALKGROUP = IntField.length16(OCTET_3_BIT_16);
+    private static final IntField SUPERGROUP = IntField.length16(OCTET_3_BIT_16);
     private static final IntField RADIO = IntField.length24(OCTET_5_BIT_32);
     private List<Identifier> mIdentifiers;
-    private TalkgroupIdentifier mTalkgroup;
+    private PatchGroupIdentifier mPatchgroup;
     private RadioIdentifier mRadio;
     private ServiceOptions mServiceOptions = new VoiceServiceOptions(0);
 
@@ -63,7 +63,7 @@ public class GroupRegroupVoiceChannelUserAbbreviated extends MacStructure implem
     {
         StringBuilder sb = new StringBuilder();
         sb.append("GROUP REGROUP VOICE CHANNEL USER ABBREVIATED");
-        sb.append(" TALKGROUP:").append(getTalkgroup());
+        sb.append(" TALKGROUP:").append(getPatchgroup());
         if(hasRadio())
         {
             sb.append(" TALKER RADIO:").append(getRadio());
@@ -81,14 +81,14 @@ public class GroupRegroupVoiceChannelUserAbbreviated extends MacStructure implem
     /**
      * Talkgroup active on this channel/timeslot.
      */
-    public TalkgroupIdentifier getTalkgroup()
+    public PatchGroupIdentifier getPatchgroup()
     {
-        if(mTalkgroup == null)
+        if(mPatchgroup == null)
         {
-            mTalkgroup = APCO25Talkgroup.create(getInt(TALKGROUP));
+            mPatchgroup = APCO25PatchGroup.create(getInt(SUPERGROUP));
         }
 
-        return mTalkgroup;
+        return mPatchgroup;
     }
 
     /**
@@ -118,7 +118,7 @@ public class GroupRegroupVoiceChannelUserAbbreviated extends MacStructure implem
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getTalkgroup());
+            mIdentifiers.add(getPatchgroup());
 
             if(hasRadio())
             {

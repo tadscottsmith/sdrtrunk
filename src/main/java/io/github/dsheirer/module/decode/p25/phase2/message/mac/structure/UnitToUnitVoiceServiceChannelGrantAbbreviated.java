@@ -70,7 +70,7 @@ public class UnitToUnitVoiceServiceChannelGrantAbbreviated extends MacStructure
         StringBuilder sb = new StringBuilder();
         sb.append(getOpcode());
         sb.append(" FM:").append(getSourceAddress());
-        sb.append(" TO:").append(getTargetAddress());
+        sb.append(" TO:").append(getPatchgroup());
         sb.append(" CHAN:").append(getChannel());
         return sb.toString();
     }
@@ -104,7 +104,7 @@ public class UnitToUnitVoiceServiceChannelGrantAbbreviated extends MacStructure
     /**
      * To Talkgroup
      */
-    public Identifier getTargetAddress()
+    public Identifier getPatchgroup()
     {
         if(mTargetAddress == null)
         {
@@ -133,7 +133,7 @@ public class UnitToUnitVoiceServiceChannelGrantAbbreviated extends MacStructure
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getTargetAddress());
+            mIdentifiers.add(getPatchgroup());
             mIdentifiers.add(getSourceAddress());
             mIdentifiers.add(getChannel());
         }

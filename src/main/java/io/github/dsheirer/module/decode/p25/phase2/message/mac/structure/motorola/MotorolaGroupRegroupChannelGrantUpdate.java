@@ -23,8 +23,10 @@ import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.talkgroup.TalkgroupIdentifier;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
+import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.MacStructureVendor;
@@ -44,8 +46,8 @@ public class MotorolaGroupRegroupChannelGrantUpdate extends MacStructureVendor i
     private static final IntField SUPERGROUP_ADDRESS_B = IntField.length16(OCTET_10_BIT_72);
 
     private List<Identifier> mIdentifiers;
-    private TalkgroupIdentifier mPatchgroupA;
-    private TalkgroupIdentifier mPatchgroupB;
+    private PatchGroupIdentifier mPatchgroupA;
+    private PatchGroupIdentifier mPatchgroupB;
     private APCO25Channel mChannelA;
     private APCO25Channel mChannelB;
 
@@ -101,11 +103,11 @@ public class MotorolaGroupRegroupChannelGrantUpdate extends MacStructureVendor i
     /**
      * Patch group A
      */
-    public TalkgroupIdentifier getPatchgroupA()
+    public PatchGroupIdentifier getPatchgroupA()
     {
         if(mPatchgroupA == null)
         {
-            mPatchgroupA = APCO25Talkgroup.create(getInt(SUPERGROUP_ADDRESS_A));
+            mPatchgroupA = APCO25PatchGroup.create(getInt(SUPERGROUP_ADDRESS_A));
         }
 
         return mPatchgroupA;
@@ -114,11 +116,11 @@ public class MotorolaGroupRegroupChannelGrantUpdate extends MacStructureVendor i
     /**
      * Patch group B
      */
-    public TalkgroupIdentifier getPatchgroupB()
+    public PatchGroupIdentifier getPatchgroupB()
     {
         if(mPatchgroupB == null)
         {
-            mPatchgroupB = APCO25Talkgroup.create(getInt(SUPERGROUP_ADDRESS_B));
+            mPatchgroupB = APCO25PatchGroup.create(getInt(SUPERGROUP_ADDRESS_B));
         }
 
         return mPatchgroupB;

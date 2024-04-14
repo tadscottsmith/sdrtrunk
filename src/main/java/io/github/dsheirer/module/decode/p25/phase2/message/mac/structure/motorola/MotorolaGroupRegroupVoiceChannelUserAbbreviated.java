@@ -22,9 +22,11 @@ package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motoro
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.identifier.Identifier;
+import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.radio.RadioIdentifier;
 import io.github.dsheirer.identifier.talkgroup.TalkgroupIdentifier;
 import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
+import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
 import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.MacStructureVendor;
@@ -39,10 +41,10 @@ public class MotorolaGroupRegroupVoiceChannelUserAbbreviated extends MacStructur
 {
     private static final IntField SERVICE_OPTIONS = IntField.length8(OCTET_3_BIT_16);
     private static final IntField SUPERGROUP = IntField.length16(OCTET_4_BIT_24);
-    private static final IntField SOURCE = IntField.length24(OCTET_3_BIT_16);
+    private static final IntField SOURCE = IntField.length24(OCTET_6_BIT_40);
     private VoiceServiceOptions mServiceOptions;
     private List<Identifier> mIdentifiers;
-    private TalkgroupIdentifier mTalkgroup;
+    private PatchGroupIdentifier mPatchGroup;
     private RadioIdentifier mRadio;
 
     /**
@@ -67,7 +69,7 @@ public class MotorolaGroupRegroupVoiceChannelUserAbbreviated extends MacStructur
         {
             sb.append(" ENCRYPTED");
         }
-        sb.append(" SUPERGROUP:").append(getTalkgroup());
+        sb.append(" SUPERGROUP:").append(getPatchGroup());
         if(hasRadio())
         {
             sb.append(" FM:").append(getRadio());
@@ -91,14 +93,14 @@ public class MotorolaGroupRegroupVoiceChannelUserAbbreviated extends MacStructur
     /**
      * Talkgroup active on this channel/timeslot.
      */
-    public TalkgroupIdentifier getTalkgroup()
+    public PatchGroupIdentifier getPatchGroup()
     {
-        if(mTalkgroup == null)
+        if(mPatchGroup == null)
         {
-            mTalkgroup = APCO25Talkgroup.create(getInt(SUPERGROUP));
+            mPatchGroup = APCO25PatchGroup.create(getInt(SUPERGROUP));
         }
 
-        return mTalkgroup;
+        return mPatchGroup;
     }
 
     /**
@@ -128,7 +130,7 @@ public class MotorolaGroupRegroupVoiceChannelUserAbbreviated extends MacStructur
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getTalkgroup());
+            mIdentifiers.add(getPatchGroup());
 
             if(hasRadio())
             {

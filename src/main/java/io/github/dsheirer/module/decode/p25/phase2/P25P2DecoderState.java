@@ -46,6 +46,7 @@ import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.P25DecodeEvent;
 import io.github.dsheirer.module.decode.p25.P25TrafficChannelManager;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
+import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBand;
 import io.github.dsheirer.module.decode.p25.phase1.message.P25P1Message;
 import io.github.dsheirer.module.decode.p25.phase2.message.EncryptionSynchronizationSequence;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.IP25ChannelGrantDetailProvider;
@@ -66,6 +67,7 @@ import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupAf
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupAffiliationQueryExtended;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupAffiliationResponseAbbreviated;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupAffiliationResponseExtended;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupRegroupVoiceChannelUserAbbreviated;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupVoiceChannelGrantUpdateExplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupVoiceChannelGrantUpdateImplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.GroupVoiceChannelGrantUpdateMultipleExplicit;
@@ -111,19 +113,24 @@ import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harri
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaAcknowledgeResponse;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaDenyResponse;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupAddCommand;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupChannelGrantExplicit;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupChannelGrantImplicit;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupChannelGrantUpdate;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupDeleteCommand;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupExtendedFunctionCommand;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupVoiceChannelUpdate;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupVoiceChannelUserAbbreviated;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaGroupRegroupVoiceChannelUserExtended;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola.MotorolaQueuedResponse;
 import io.github.dsheirer.module.decode.p25.phase2.timeslot.AbstractVoiceTimeslot;
 import io.github.dsheirer.module.decode.p25.reference.ServiceOptions;
 import io.github.dsheirer.module.decode.p25.reference.VoiceServiceOptions;
 import io.github.dsheirer.protocol.Protocol;
-import java.util.Collections;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Decoder state for an APCO-25 Phase II channel.  Maintains the call/control/data/idle state of the channel and
@@ -234,8 +241,16 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 //We don't send any state events for this message since it can only occur in conjunction with
                 //an audio frame that already sends the call state event
                 getIdentifierCollection().update(message.getIdentifiers());
-
                 mTrafficChannelManager.processP2CurrentUser(getCurrentFrequency(), getTimeslot(), ess.getEncryptionKey(), ess.getTimestamp());
+
+                if(ess.isEncrypted())
+                {
+                    continueState(State.ENCRYPTED);
+                }
+                else
+                {
+                    continueState(State.CALL);
+                }
             }
         }
     }
@@ -457,6 +472,10 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 //Ignore
                 break;
             case PHASE1_90_GROUP_REGROUP_VOICE_CHANNEL_USER_ABBREVIATED:
+                if(mac instanceof GroupRegroupVoiceChannelUserAbbreviated gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchgroup(), message.getTimestamp());
+                }
                 processChannelUser(message, mac);
                 break;
             case PHASE1_C0_GROUP_VOICE_CHANNEL_GRANT_EXPLICIT:
@@ -562,12 +581,20 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
             //Vendor: Motorola
             case MOTOROLA_80_GROUP_REGROUP_VOICE_CHANNEL_USER_ABBREVIATED:
+                if(mac instanceof MotorolaGroupRegroupVoiceChannelUserAbbreviated gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchGroup(), message.getTimestamp());
+                }
                 processChannelUser(message, mac);
                 break;
             case MOTOROLA_81_GROUP_REGROUP_ADD:
                 processDynamicRegrouping(message, mac);
                 break;
             case MOTOROLA_83_GROUP_REGROUP_VOICE_CHANNEL_UPDATE:
+                if(mac instanceof MotorolaGroupRegroupVoiceChannelUpdate gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchgroup(), message.getTimestamp());
+                }
                 processChannelGrantUpdate(message, mac);
                 break;
             case MOTOROLA_84_GROUP_REGROUP_EXTENDED_FUNCTION_COMMAND:
@@ -583,13 +610,36 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 //Unknown
                 break;
             case MOTOROLA_A0_GROUP_REGROUP_VOICE_CHANNEL_USER_EXTENDED:
+                if(mac instanceof MotorolaGroupRegroupVoiceChannelUserExtended gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchgroup(), message.getTimestamp());
+                }
                 processChannelUser(message, mac);
                 break;
             case MOTOROLA_A3_GROUP_REGROUP_CHANNEL_GRANT_IMPLICIT:
+                if(mac instanceof MotorolaGroupRegroupChannelGrantImplicit gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchgroup(), message.getTimestamp());
+                }
+                processChannelGrant(message, mac);
+                break;
             case MOTOROLA_A4_GROUP_REGROUP_CHANNEL_GRANT_EXPLICIT:
+                if(mac instanceof MotorolaGroupRegroupChannelGrantExplicit gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchgroup(), message.getTimestamp());
+                }
                 processChannelGrant(message, mac);
                 break;
             case MOTOROLA_A5_GROUP_REGROUP_CHANNEL_GRANT_UPDATE:
+                if(mac instanceof MotorolaGroupRegroupChannelGrantUpdate gr)
+                {
+                    mPatchGroupManager.addPatchGroup(gr.getPatchgroupA(), message.getTimestamp());
+
+                    if(gr.hasPatchgroupB())
+                    {
+                        mPatchGroupManager.addPatchGroup(gr.getPatchgroupB(), message.getTimestamp());
+                    }
+                }
                 processChannelGrantUpdate(message, mac);
                 break;
             case MOTOROLA_A6_QUEUED_RESPONSE:
@@ -774,9 +824,23 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
      */
     private void processChannelGrant(MacMessage message, MacStructure mac)
     {
+        if(message.getMacPduType() == MacPduType.MAC_3_IDLE || message.getMacPduType() == MacPduType.MAC_6_HANGTIME)
+        {
+            closeCurrentCallEvent(message.getTimestamp(), false, false);
+
+            for(Identifier identifier : mac.getIdentifiers())
+            {
+                //Add to the identifier collection after filtering through the patch group manager
+                getIdentifierCollection().update(mPatchGroupManager.update(identifier, message.getTimestamp()));
+            }
+
+            continueState(State.ACTIVE);
+        }
+
         //All channel grant messages implement this interface
         if(mac instanceof IP25ChannelGrantDetailProvider cgdp)
         {
+            updateCurrentChannel(cgdp.getChannel());
             MutableIdentifierCollection ic = getIdentifierCollectionForUsers(mac.getIdentifiers(), message.getTimestamp());
             //Add the traffic channel to the IC
             ic.update(cgdp.getChannel());
@@ -792,11 +856,18 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
      */
     private void processChannelGrantUpdate(MacMessage message, MacStructure mac)
     {
+        if(message.getMacPduType() == MacPduType.MAC_3_IDLE || message.getMacPduType() == MacPduType.MAC_6_HANGTIME)
+        {
+            closeCurrentCallEvent(message.getTimestamp(), false, false);
+            continueState(State.ACTIVE);
+        }
+
         switch(mac.getOpcode())
         {
             case TDMA_05_GROUP_VOICE_CHANNEL_GRANT_UPDATE_MULTIPLE_IMPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateMultipleImplicit cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel1());
                     MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1(), message.getTimestamp());
                     mic.update(cgu.getChannel1());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions1(), mic,
@@ -804,6 +875,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                     if(cgu.hasGroup2())
                     {
+                        updateCurrentChannel(cgu.getChannel2());
                         MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2(), message.getTimestamp());
                         mic2.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions2(), mic2,
@@ -812,6 +884,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                     if(cgu.hasGroup3())
                     {
+                        updateCurrentChannel(cgu.getChannel3());
                         MutableIdentifierCollection mic3 = getIdentifierCollectionForUser(cgu.getGroupAddress3(), message.getTimestamp());
                         mic3.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions3(), mic3,
@@ -822,6 +895,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case TDMA_25_GROUP_VOICE_CHANNEL_GRANT_UPDATE_MULTIPLE_EXPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateMultipleExplicit cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel1());
                     MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1(), message.getTimestamp());
                     mic.update(cgu.getChannel1());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions1(), mic,
@@ -829,6 +903,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                     if(cgu.hasGroup2())
                     {
+                        updateCurrentChannel(cgu.getChannel2());
                         MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2(), message.getTimestamp());
                         mic2.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), cgu.getServiceOptions2(), mic2,
@@ -839,6 +914,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_42_GROUP_VOICE_CHANNEL_GRANT_UPDATE_IMPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateImplicit cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel1());
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
                     MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress1(), message.getTimestamp());
@@ -848,6 +924,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                     if(cgu.hasGroup2())
                     {
+                        updateCurrentChannel(cgu.getChannel2());
                         MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getGroupAddress2(), message.getTimestamp());
                         mic2.update(cgu.getChannel1());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel1(), serviceOptions, mic2,
@@ -858,6 +935,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_46_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE_ABBREVIATED:
                 if(mac instanceof UnitToUnitVoiceChannelGrantUpdateAbbreviated cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel());
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
                     MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
@@ -869,6 +947,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_49_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE_IMPLICIT:
                 if(mac instanceof TelephoneInterconnectVoiceChannelGrantUpdateImplicit cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel());
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
                     MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
@@ -880,6 +959,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C3_GROUP_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
                 if(mac instanceof GroupVoiceChannelGrantUpdateExplicit cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel());
                     MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getGroupAddress(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
@@ -889,6 +969,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C6_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE_EXTENDED_VCH:
                 if(mac instanceof UnitToUnitVoiceChannelGrantUpdateExtendedVCH cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel());
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
                     MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
@@ -900,6 +981,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C7_UNIT_TO_UNIT_VOICE_CHANNEL_GRANT_UPDATE_EXTENDED_LCCH:
                 if(mac instanceof UnitToUnitVoiceChannelGrantUpdateExtendedLCCH cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel());
                     MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
@@ -909,6 +991,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case PHASE1_C9_TELEPHONE_INTERCONNECT_VOICE_CHANNEL_GRANT_UPDATE_EXPLICIT:
                 if(mac instanceof TelephoneInterconnectVoiceChannelGrantUpdateExplicit cgu)
                 {
+                    updateCurrentChannel(cgu.getChannel());
                     MutableIdentifierCollection mic = getIdentifierCollectionForUsers(cgu.getIdentifiers(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
@@ -918,7 +1001,9 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case MOTOROLA_83_GROUP_REGROUP_VOICE_CHANNEL_UPDATE:
                 if(mac instanceof MotorolaGroupRegroupVoiceChannelUpdate cgu)
                 {
-                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getSupergroup(), message.getTimestamp());
+                    mPatchGroupManager.addPatchGroup(cgu.getPatchgroup(), message.getTimestamp());
+                    updateCurrentChannel(cgu.getChannel());
+                    MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getPatchgroup(), message.getTimestamp());
                     mic.update(cgu.getChannel());
                     mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannel(), cgu.getServiceOptions(), mic,
                             mac.getOpcode(), message.getTimestamp());
@@ -927,6 +1012,8 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
             case MOTOROLA_A5_GROUP_REGROUP_CHANNEL_GRANT_UPDATE:
                 if(mac instanceof MotorolaGroupRegroupChannelGrantUpdate cgu)
                 {
+                    mPatchGroupManager.addPatchGroup(cgu.getPatchgroupA(), message.getTimestamp());
+                    updateCurrentChannel(cgu.getChannelA());
                     //Create an empty service options
                     VoiceServiceOptions serviceOptions = new VoiceServiceOptions(0);
                     MutableIdentifierCollection mic = getIdentifierCollectionForUser(cgu.getPatchgroupA(), message.getTimestamp());
@@ -936,6 +1023,8 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                     if(cgu.hasPatchgroupB())
                     {
+                        mPatchGroupManager.addPatchGroup(cgu.getPatchgroupB(), message.getTimestamp());
+                        updateCurrentChannel(cgu.getChannelB());
                         MutableIdentifierCollection mic2 = getIdentifierCollectionForUser(cgu.getPatchgroupB(), message.getTimestamp());
                         mic2.update(cgu.getChannelB());
                         mTrafficChannelManager.processP2ChannelUpdate(cgu.getChannelB(), serviceOptions, mic2,
@@ -951,13 +1040,47 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
     }
 
     /**
+     * Updates the current channel from channel grant and update messaging.
+     * @param channelDescriptor to compare to the current frequency.
+     */
+    private void updateCurrentChannel(IChannelDescriptor channelDescriptor)
+    {
+        if(getCurrentChannel() == null &&
+                getCurrentFrequency() > 0 &&
+                channelDescriptor.getDownlinkFrequency() == getCurrentFrequency())
+        {
+            if(channelDescriptor instanceof APCO25Channel p25)
+            {
+                if(p25.getTimeslot() == getTimeslot())
+                {
+                    setCurrentChannel(channelDescriptor);
+                }
+                else if(getTimeslot() == P25P1Message.TIMESLOT_1)
+                {
+                    APCO25Channel timeslot1 = APCO25Channel.create(p25.getValue().getDownlinkBandIdentifier(),
+                            p25.getValue().getDownlinkChannelNumber() - 1);
+                    timeslot1.setFrequencyBand(p25.getValue().getFrequencyBand());
+                    setCurrentChannel(timeslot1);
+                }
+                else
+                {
+                    APCO25Channel timeslot2 = APCO25Channel.create(p25.getValue().getDownlinkBandIdentifier(),
+                            p25.getValue().getDownlinkChannelNumber() + 1);
+                    timeslot2.setFrequencyBand(p25.getValue().getFrequencyBand());
+                    setCurrentChannel(timeslot2);
+                }
+            }
+        }
+    }
+
+    /**
      * Channel user (ie current user on this channel).
      *
      * Note: calling code should ensure that the mac structure argument implements the IServiceOptionsProvider interface.
      */
     private void processChannelUser(MacMessage message, MacStructure mac)
     {
-        if(message.getMacPduType() == MacPduType.MAC_6_HANGTIME)
+        if(message.getMacPduType() == MacPduType.MAC_3_IDLE || message.getMacPduType() == MacPduType.MAC_6_HANGTIME)
         {
             closeCurrentCallEvent(message.getTimestamp(), false, false);
 
@@ -966,6 +1089,8 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                 //Add to the identifier collection after filtering through the patch group manager
                 getIdentifierCollection().update(mPatchGroupManager.update(identifier, message.getTimestamp()));
             }
+
+            continueState(State.ACTIVE);
         }
         else
         {
@@ -986,11 +1111,11 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
 
                 if(sop.getServiceOptions().isEncrypted())
                 {
-                    broadcast(new DecoderStateEvent(this, Event.CONTINUATION, State.ENCRYPTED, getTimeslot()));
+                    continueState(State.ENCRYPTED);
                 }
                 else
                 {
-                    broadcast(new DecoderStateEvent(this, Event.CONTINUATION, State.CALL, getTimeslot()));
+                    continueState(State.CALL);
                 }
             }
             else
@@ -999,6 +1124,7 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
                         1, "Unrecognized voice channel user MAC message.  Please notify the developer " +
                                 "that this class should implement the IServiceOptionsProvider interface.  Class: " +
                                 mac.getClass());
+                continueState(State.ACTIVE);
             }
         }
     }
@@ -1183,6 +1309,12 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
      */
     private void processNetwork(MacMessage message, MacStructure mac)
     {
+        if(message.getMacPduType() == MacPduType.MAC_3_IDLE || message.getMacPduType() == MacPduType.MAC_6_HANGTIME)
+        {
+            closeCurrentCallEvent(message.getTimestamp(), false, false);
+            continueState(State.ACTIVE);
+        }
+
         mNetworkConfigurationMonitor.processMacMessage(message);
 
         if(mac instanceof NetworkStatusBroadcastImplicit nsbi)
@@ -1192,6 +1324,12 @@ public class P25P2DecoderState extends TimeslotDecoderState implements Identifie
         else if(mac instanceof RfssStatusBroadcastImplicit rsbi)
         {
             setCurrentChannel(rsbi.getChannel());
+        }
+
+        //Send the frequency bands to the traffic channel manager to use for traffic channel preload data
+        if(mac instanceof IFrequencyBand frequencyBand)
+        {
+            mTrafficChannelManager.processFrequencyBand(frequencyBand);
         }
     }
 
