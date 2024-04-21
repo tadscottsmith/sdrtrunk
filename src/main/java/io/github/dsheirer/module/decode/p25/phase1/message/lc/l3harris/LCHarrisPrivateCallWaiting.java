@@ -29,17 +29,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * L3Harris Unknown Opcode 10 (0x0A)
+ * L3Harris Unknown Opcode 10 (0x0A) - This seems to be a 'return to control channel' or 'private call waiting'.
  * <p>
- * Observed in a traffic channel carried by a TDU during an SNDCP packet data session.  The controller send an 'All
- * blocks received' PDU to the radio in the middle of a stream of these TDU/LC messages and the traffic channel ended
- * with Call Termination TDULC messages.  So, this may be some form of current data session user information update.
+ * Observed on a phase 1 traffic data channel carried by a TDU during an SNDCP packet data session.  The controller sent
+ * an 'All blocks received' PDU to the radio and an 'Activate TDS context' in the middle of a stream of these TDU/LC
+ * messages, and then the radio terminated the traffic channel.  So, this may be some form of return to control
+ * channel.
+ *
+ * When the radio returned to the control channel, control sent the following two MAC messages on the Phase 2 control:
+ * LOCCH-U NAC:9/x009 SIGNAL CUSTOM/UNKNOWN VENDOR:HARRIS ID:A4 OPCODE:160 LENGTH:9 MSG:A0A409AC0312014871     (radio 0x014871 go to data channel 0x0312??)
+ * LOCCH-U NAC:9/x009 SIGNAL CUSTOM/UNKNOWN VENDOR:HARRIS ID:A4 OPCODE:172 LENGTH:12 MSG:ACA40C000312014871980418 (from 0x014871 to 0x980418 unit-2-unit data channel grant?)
+ *
+ * Both messages seem to refer to channel 0-786 (0x0312) so this may be a unit-2-unit private Phase 1 call or maybe
+ * a private data call. Radio addresses: 0x014871 and 0x980418
+ *
  */
-public class LCHarrisUnknownOpcode10 extends LinkControlWord
+public class LCHarrisPrivateCallWaiting extends LinkControlWord
 {
     private static final IntField UNKNOWN_1 = IntField.length8(OCTET_2_BIT_16);
-    private static final IntField TARGET_RADIO = IntField.length24(OCTET_3_BIT_24);
-    private static final IntField SOURCE_RADIO = IntField.length24(OCTET_6_BIT_48);
+    private static final IntField SOURCE_RADIO = IntField.length24(OCTET_3_BIT_24);
+    private static final IntField TARGET_RADIO = IntField.length24(OCTET_6_BIT_48);
     private RadioIdentifier mSourceRadio;
     private RadioIdentifier mTargetRadio;
     private List<Identifier> mIdentifiers;
@@ -49,7 +58,7 @@ public class LCHarrisUnknownOpcode10 extends LinkControlWord
      *
      * @param message
      */
-    public LCHarrisUnknownOpcode10(CorrectedBinaryMessage message)
+    public LCHarrisPrivateCallWaiting(CorrectedBinaryMessage message)
     {
         super(message);
     }
@@ -69,7 +78,7 @@ public class LCHarrisUnknownOpcode10 extends LinkControlWord
         }
         else
         {
-            sb.append("L3HARRIS UNKNOWN OPCODE 10 ");
+            sb.append("L3HARRIS OPCODE 10 RETURN TO CONTROL CHANNEL FOR PRIVATE CALL");
             sb.append(" FM:").append(getSourceRadio());
             sb.append(" TO:").append(getTargetRadio());
             sb.append(" UNK:").append(getUnknown());

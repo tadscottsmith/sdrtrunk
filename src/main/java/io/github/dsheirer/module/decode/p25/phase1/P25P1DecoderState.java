@@ -61,6 +61,8 @@ import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HDUMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HeaderData;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlOpcode;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlWord;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisPrivateCallWaiting;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaEmergencyAlarmActivation;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaTalkComplete;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaUnitGPS;
@@ -2087,7 +2089,17 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Unit-to-Unit Answer Request");
                 break;
+            case L3HARRIS_UNKNOWN_0A:
+                if(lcw instanceof LCHarrisPrivateCallWaiting)
+                {
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.RESPONSE, "L3Harris Opcode 10 - Unknown");
+                }
+                break;
             case MOTOROLA_EMERGENCY_ALARM_ACTIVATION:
+                if(lcw instanceof LCMotorolaEmergencyAlarmActivation)
+                {
+                    broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.EMERGENCY, "EMERGENCY ALARM ACTIVATION");
+                }
                 break;
             case MOTOROLA_UNIT_GPS:
                 if(lcw instanceof LCMotorolaUnitGPS gps)

@@ -67,7 +67,7 @@ public class GroupVoiceChannelGrantImplicit extends MacStructureVoiceService
         StringBuilder sb = new StringBuilder();
         sb.append(getOpcode());
         sb.append(" FM:").append(getSourceAddress());
-        sb.append(" TO:").append(getPatchgroup());
+        sb.append(" TO:").append(getTargetAddress());
         sb.append(" CHAN:").append(getChannel());
         sb.append(" ").append(getServiceOptions());
         return sb.toString();
@@ -89,7 +89,7 @@ public class GroupVoiceChannelGrantImplicit extends MacStructureVoiceService
     /**
      * To Talkgroup
      */
-    public Identifier getPatchgroup()
+    public Identifier getTargetAddress()
     {
         if(mTargetAddress == null)
         {
@@ -118,7 +118,7 @@ public class GroupVoiceChannelGrantImplicit extends MacStructureVoiceService
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getPatchgroup());
+            mIdentifiers.add(getTargetAddress());
             mIdentifiers.add(getSourceAddress());
             mIdentifiers.add(getChannel());
         }

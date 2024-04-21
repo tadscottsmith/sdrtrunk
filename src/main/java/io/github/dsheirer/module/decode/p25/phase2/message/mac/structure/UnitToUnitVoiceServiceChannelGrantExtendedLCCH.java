@@ -81,9 +81,9 @@ public class UnitToUnitVoiceServiceChannelGrantExtendedLCCH extends MacStructure
         sb.append("UNIT-TO-UNIT VOICE SERVICE CHANNEL GRANT EXTENDED (1/2)");
         sb.append(" FM:").append(getSourceAddress());
 
-        if(getPatchgroup() != null)
+        if(getTargetAddress() != null)
         {
-            sb.append(" TO:").append(getPatchgroup());
+            sb.append(" TO:").append(getTargetAddress());
         }
         sb.append(" CHAN:").append(getChannel());
         return sb.toString();
@@ -122,7 +122,7 @@ public class UnitToUnitVoiceServiceChannelGrantExtendedLCCH extends MacStructure
     /**
      * Fully qualified radio source identify with aliased with a local persona radio address.
      */
-    public APCO25FullyQualifiedRadioIdentifier getPatchgroup()
+    public APCO25FullyQualifiedRadioIdentifier getTargetAddress()
     {
         if(mTargetAddress == null && hasFragment(0))
         {
@@ -157,9 +157,9 @@ public class UnitToUnitVoiceServiceChannelGrantExtendedLCCH extends MacStructure
         List<Identifier> identifiers = new ArrayList<>();
         identifiers.add(getSourceAddress());
 
-        if(getPatchgroup() != null)
+        if(getTargetAddress() != null)
         {
-            identifiers.add(getPatchgroup());
+            identifiers.add(getTargetAddress());
         }
 
         identifiers.add(getChannel());

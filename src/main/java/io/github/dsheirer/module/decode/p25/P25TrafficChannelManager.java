@@ -64,11 +64,12 @@ import io.github.dsheirer.sample.Listener;
 import io.github.dsheirer.source.config.SourceConfigTuner;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,13 +99,13 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
     public static final String CHANNEL_START_REJECTED = "CHANNEL START REJECTED";
     public static final String MAX_TRAFFIC_CHANNELS_EXCEEDED = "MAX TRAFFIC CHANNELS EXCEEDED";
 
-    private Queue<Channel> mAvailablePhase1TrafficChannelQueue = new ConcurrentLinkedQueue<>();
+    private Queue<Channel> mAvailablePhase1TrafficChannelQueue = new LinkedTransferQueue<>();
     private List<Channel> mManagedPhase1TrafficChannels;
-    private Queue<Channel> mAvailablePhase2TrafficChannelQueue = new ConcurrentLinkedQueue<>();
+    private Queue<Channel> mAvailablePhase2TrafficChannelQueue = new LinkedTransferQueue<>();
     private List<Channel> mManagedPhase2TrafficChannels;
-    private Map<Long,Channel> mAllocatedTrafficChannelMap = new ConcurrentHashMap<>();
-    private Map<Long,P25ChannelGrantEvent> mTS1ChannelGrantEventMap = new ConcurrentHashMap<>();
-    private Map<Long,P25ChannelGrantEvent> mTS2ChannelGrantEventMap = new ConcurrentHashMap<>();
+    private Map<Long,Channel> mAllocatedTrafficChannelMap = new HashMap<>();
+    private Map<Long,P25ChannelGrantEvent> mTS1ChannelGrantEventMap = new HashMap<>();
+    private Map<Long,P25ChannelGrantEvent> mTS2ChannelGrantEventMap = new HashMap<>();
     private Map<Integer, IFrequencyBand> mFrequencyBandMap = new ConcurrentHashMap<>();
     private Listener<ChannelEvent> mChannelEventListener;
     private Listener<IDecodeEvent> mDecodeEventListener;
@@ -495,11 +496,11 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
      *
      * @param apco25Channel for the traffic channel
      * @param serviceOptions for the traffic channel - optional can be null
-     * @param identifierCollection associated with the channel grant
+     * @param ic associated with the channel grant
      * @param macOpcode to identify the call type for the event description
      */
     public void processP2ChannelGrant(APCO25Channel apco25Channel, ServiceOptions serviceOptions,
-                                             IdentifierCollection identifierCollection, MacOpcode macOpcode, long timestamp)
+                                      IdentifierCollection ic, MacOpcode macOpcode, long timestamp)
     {
         mLock.lock();
 
@@ -516,13 +517,13 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                     if(macOpcode.isDataChannelGrant())
                     {
                         APCO25Channel phase1Channel = convertPhase2ToPhase1(apco25Channel);
-                        processPhase1ChannelGrant(phase1Channel, serviceOptions, identifierCollection,
-                                                  decodeEventType, isDataChannelGrant, timestamp);
+                        processPhase1ChannelGrant(phase1Channel, serviceOptions, ic, decodeEventType,
+                                isDataChannelGrant, timestamp);
                     }
                     else
                     {
-                        processPhase2ChannelGrant(apco25Channel, serviceOptions, identifierCollection,
-                                                  decodeEventType, isDataChannelGrant, timestamp);
+                        processPhase2ChannelGrant(apco25Channel, serviceOptions, ic, decodeEventType,
+                                isDataChannelGrant, timestamp);
 
                         //Hack: set the IDLE/NULL protect flag so that this event doesn't get immediately closed on
                         //L3Harris control channels.
@@ -537,8 +538,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
             }
             else
             {
-                processPhase1ChannelGrant(apco25Channel, serviceOptions, identifierCollection, decodeEventType,
-                        isDataChannelGrant, timestamp);
+                processPhase1ChannelGrant(apco25Channel, serviceOptions, ic, decodeEventType, isDataChannelGrant,
+                        timestamp);
             }
 
         }
@@ -569,33 +570,14 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
             if(apco25Channel.isTDMAChannel())
             {
-                if(apco25Channel.getTimeslotCount() == 2)
-                {
-                    //Data channels may be granted as a phase 2 channel grant but are still phase 1 channels
-                    if(isDataChannelGrant)
-                    {
-                        APCO25Channel phase1Channel = convertPhase2ToPhase1(apco25Channel);
-                        processPhase1ChannelGrant(phase1Channel, serviceOptions, identifierCollection, decodeEventType,
-                                isDataChannelGrant, timestamp);
-                    }
-                    else
-                    {
-                        processPhase2ChannelGrant(apco25Channel, serviceOptions, identifierCollection, decodeEventType,
-                                isDataChannelGrant, timestamp);
-                    }
-                }
-                else
-                {
-                    mLog.warn("Cannot process TDMA channel grant - unrecognized timeslot count: " +
-                            apco25Channel.getTimeslotCount());
-                }
+                processPhase2ChannelGrant(apco25Channel, serviceOptions, identifierCollection, decodeEventType,
+                        isDataChannelGrant, timestamp);
             }
             else
             {
                 processPhase1ChannelGrant(apco25Channel, serviceOptions, identifierCollection, decodeEventType,
                         isDataChannelGrant, timestamp);
             }
-
         }
         finally
         {
@@ -758,21 +740,32 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
      * @param timestamp of the message
      */
     public void processP1ChannelUpdate(APCO25Channel channel, ServiceOptions serviceOptions,
-                                              IdentifierCollection ic, Opcode opcode, long timestamp)
+                                       IdentifierCollection ic, Opcode opcode, long timestamp)
     {
 
         mLock.lock();
 
         try
         {
-            DecodeEvent event = mTS1ChannelGrantEventMap.get(channel.getDownlinkFrequency());
+            DecodeEvent event = null;
 
+            if(channel.isTDMAChannel() && channel.getTimeslot() == P25P1Message.TIMESLOT_2)
+            {
+                event = mTS2ChannelGrantEventMap.get(channel.getDownlinkFrequency());
+            }
+            else
+            {
+                event = mTS1ChannelGrantEventMap.get(channel.getDownlinkFrequency());
+            }
+
+            //If we have an event, update it.  Otherwise, make sure we have the traffic channel allocated
             if(event != null && isSameCallUpdate(event.getIdentifierCollection(), ic))
             {
                 event.update(timestamp);
                 broadcast(event);
             }
-            else
+            else if(channel.getDownlinkFrequency() > 0 &&
+                    !mAllocatedTrafficChannelMap.containsKey(channel.getDownlinkFrequency()))
             {
                 processP1ChannelGrant(channel, serviceOptions, ic, opcode, timestamp);
             }
@@ -951,9 +944,6 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
         broadcast(event);
     }
 
-
-
-
     /**
      * Processes Phase 2 channel grants to allocate traffic channels and track overall channel usage.  Generates
      * decode events for each new channel that is allocated.
@@ -1081,9 +1071,10 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                 .identifiers(identifierCollection)
                 .build();
 
-            mTS1ChannelGrantEventMap.put(frequency, event);
-            broadcast(event);
-            return event;
+            //Phase 1 events get stored in TS1 only
+           mTS1ChannelGrantEventMap.put(frequency, event);
+           broadcast(event);
+           return event;
         }
 
         event = P25ChannelGrantEvent.builder(decodeEventType, timestamp, serviceOptions)
@@ -1125,6 +1116,12 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                     new ChannelStartProcessingRequest(trafficChannel, apco25Channel, identifierCollection, this);
             startChannelRequest.addPreloadDataContent(new PatchGroupPreLoadDataContent(identifierCollection, timestamp));
             startChannelRequest.addPreloadDataContent(new P25FrequencyBandPreloadDataContent(mFrequencyBandMap.values()));
+
+            if(getInterModuleEventBus() == null)
+            {
+                return event;
+            }
+
             getInterModuleEventBus().post(startChannelRequest);
         }
 
@@ -1196,6 +1193,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                 break;
 
             case PHASE1_54_SNDCP_DATA_CHANNEL_GRANT:
+            case L3HARRIS_A0_PRIVATE_DATA_CHANNEL_GRANT:
+            case L3HARRIS_AC_UNIT_TO_UNIT_DATA_CHANNEL_GRANT:
                 type = encrypted ? DecodeEventType.DATA_CALL_ENCRYPTED : DecodeEventType.DATA_CALL;
                 break;
         }
@@ -1419,6 +1418,8 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
 
         mAvailablePhase1TrafficChannelQueue.clear();
         mAvailablePhase2TrafficChannelQueue.clear();
+//TODO: debug
+        mLog.info("TCM - Stopping and clearing channel grant event maps");
         mTS1ChannelGrantEventMap.clear();
         mTS2ChannelGrantEventMap.clear();
     }
@@ -1560,7 +1561,6 @@ public class P25TrafficChannelManager extends TrafficChannelManager implements I
                                     .ifPresent(frequency -> {
                                         mAllocatedTrafficChannelMap.remove(frequency);
                                         mAvailablePhase2TrafficChannelQueue.add(channel);
-                                        mTS1ChannelGrantEventMap.remove(frequency);
                                         mTS1ChannelGrantEventMap.remove(frequency);
                                     });
                             break;

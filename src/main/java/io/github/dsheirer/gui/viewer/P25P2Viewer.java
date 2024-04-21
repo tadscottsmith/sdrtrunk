@@ -21,7 +21,6 @@ package io.github.dsheirer.gui.viewer;
 
 import com.google.common.eventbus.EventBus;
 import io.github.dsheirer.controller.channel.Channel;
-import io.github.dsheirer.dsp.filter.fir.FIRFilterSpecification;
 import io.github.dsheirer.gui.control.IntegerTextField;
 import io.github.dsheirer.identifier.IdentifierUpdateNotification;
 import io.github.dsheirer.identifier.configuration.FrequencyConfigurationIdentifier;
@@ -263,7 +262,7 @@ public class P25P2Viewer extends VBox
                             IdentifierUpdateNotification.Operation.ADD, 2));
                 }
 
-                //PCWIN TDMA Frequency Band as preload data
+                //TODO: testing use - PCWIN TDMA Frequency Band as preload data
                 //ID:2 OFFSET:-45000000 SPACING:12500 BASE:851012500 TDMA BW:12500 TIMESLOTS:2 VOCODER:HALF_RATE
                 P25FrequencyBand band = new P25FrequencyBand(2, 851012500l, -45000000l, 12500, 12500, 2);
                 P25FrequencyBandPreloadDataContent content = new P25FrequencyBandPreloadDataContent(Collections.singleton(band));
@@ -272,6 +271,7 @@ public class P25P2Viewer extends VBox
                 messageProcessor.setMessageListener(message -> {
                     if(!(message instanceof StuffBitsMessage))
                     {
+//                        System.out.println(message);
                         //Add the initial message to the packager so that it can be combined with any decoder state events.
                         messagePackager.add(message);
                         if(message.getTimeslot() == P25P1Message.TIMESLOT_1)
@@ -293,6 +293,7 @@ public class P25P2Viewer extends VBox
                     while(reader.hasNext())
                     {
                         ByteBuffer buffer = reader.next();
+//                        System.out.println("Processing Bytes " + buffer.capacity() + " / " + reader.getByteCounter());
                         messageFramer.receive(buffer);
                     }
                 }

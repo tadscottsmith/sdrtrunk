@@ -121,8 +121,10 @@ import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnitToU
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnknownMacStructure;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.UnknownVendorMessage;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisGroupRegroupExplicitEncryptionCommand;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisPrivateDataChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisTalkerAlias;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisTalkerGpsLocation;
+import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisUnitToUnitDataChannelGrant;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisUnknownOpcode129;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.L3HarrisUnknownOpcode143;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris.UnknownOpcode136;
@@ -561,10 +563,14 @@ public class MacMessageFactory
                 return new L3HarrisUnknownOpcode129(message, offset);
             case L3HARRIS_8F_UNKNOWN_OPCODE_143:
                 return new L3HarrisUnknownOpcode143(message, offset);
+            case L3HARRIS_A0_PRIVATE_DATA_CHANNEL_GRANT:
+                return new L3HarrisPrivateDataChannelGrant(message, offset);
             case L3HARRIS_AA_GPS_LOCATION:
                 return new L3HarrisTalkerGpsLocation(message, offset);
             case L3HARRIS_A8_TALKER_ALIAS:
                 return new L3HarrisTalkerAlias(message, offset);
+            case L3HARRIS_AC_UNIT_TO_UNIT_DATA_CHANNEL_GRANT:
+                return new L3HarrisUnitToUnitDataChannelGrant(message, offset);
             case L3HARRIS_B0_GROUP_REGROUP_EXPLICIT_ENCRYPTION_COMMAND:
                 return new L3HarrisGroupRegroupExplicitEncryptionCommand(message, offset);
 

@@ -41,7 +41,7 @@ public interface IP25ChannelGrantDetailProvider
     /**
      * Target radio unit or talkgroup
      */
-    Identifier getPatchgroup();
+    Identifier getTargetAddress();
 
     /**
      * Service options for the call.

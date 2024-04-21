@@ -25,13 +25,11 @@ import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
 import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.radio.RadioIdentifier;
-import io.github.dsheirer.identifier.talkgroup.TalkgroupIdentifier;
 import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25ExplicitChannel;
 import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
-import io.github.dsheirer.module.decode.p25.identifier.talkgroup.APCO25Talkgroup;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.IP25ChannelGrantDetailProvider;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.MacStructureVendor;
@@ -82,7 +80,7 @@ public class MotorolaGroupRegroupChannelGrantExplicit extends MacStructureVendor
         {
             sb.append(" ENCRYPTED");
         }
-        sb.append(" SUPERGROUP:").append(getPatchgroup());
+        sb.append(" SUPERGROUP:").append(getTargetAddress());
         if(hasSourceAddress())
         {
             sb.append(" SOURCE:").append(getSourceAddress());
@@ -118,7 +116,7 @@ public class MotorolaGroupRegroupChannelGrantExplicit extends MacStructureVendor
     /**
      * Patch group for the channel grant
      */
-    public PatchGroupIdentifier getPatchgroup()
+    public PatchGroupIdentifier getTargetAddress()
     {
         if(mPatchgroup == null)
         {
@@ -155,7 +153,7 @@ public class MotorolaGroupRegroupChannelGrantExplicit extends MacStructureVendor
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
-            mIdentifiers.add(getPatchgroup());
+            mIdentifiers.add(getTargetAddress());
 
             if(hasSourceAddress())
             {

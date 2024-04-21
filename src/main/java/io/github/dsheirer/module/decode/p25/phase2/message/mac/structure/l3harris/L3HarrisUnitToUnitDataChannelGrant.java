@@ -17,43 +17,50 @@
  * ****************************************************************************
  */
 
-package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.motorola;
+package io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.l3harris;
 
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
 import io.github.dsheirer.bits.IntField;
 import io.github.dsheirer.channel.IChannelDescriptor;
 import io.github.dsheirer.identifier.Identifier;
-import io.github.dsheirer.identifier.patch.PatchGroupIdentifier;
 import io.github.dsheirer.identifier.radio.RadioIdentifier;
-import io.github.dsheirer.module.decode.p25.IServiceOptionsProvider;
 import io.github.dsheirer.module.decode.p25.identifier.channel.APCO25Channel;
-import io.github.dsheirer.module.decode.p25.identifier.patch.APCO25PatchGroup;
 import io.github.dsheirer.module.decode.p25.identifier.radio.APCO25RadioIdentifier;
 import io.github.dsheirer.module.decode.p25.phase1.message.IFrequencyBandReceiver;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.IP25ChannelGrantDetailProvider;
 import io.github.dsheirer.module.decode.p25.phase2.message.mac.structure.MacStructureVendor;
-import io.github.dsheirer.module.decode.p25.reference.VoiceServiceOptions;
+import io.github.dsheirer.module.decode.p25.reference.DataServiceOptions;
+import io.github.dsheirer.module.decode.p25.reference.ServiceOptions;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * Motorola Group Regroup Channel Grant Implicit
+ * L3Harris Unknown Opcode 172 (0xAC), possible Unit-2-Unit Private Data Channel Grant.
+ *
+ * Observed on L3Harris control channel transmitted to a radio after the radio was on an SNDCP data channel and the
+ * controller was sending continuous TDULC with L3Harris Opcode 0x0A messages to the same radio.
+ *
+ * On returning to the phase 2 control channel, the following two messages were transmitted:
+ *
+ * LOCCH-U NAC:9/x009 SIGNAL CUSTOM/UNKNOWN VENDOR:HARRIS ID:A4 OPCODE:160 LENGTH:9 MSG:A0A409AC0312014871     (radio 0x014871 go to data channel 0x0312??)
+ * LOCCH-U NAC:9/x009 SIGNAL CUSTOM/UNKNOWN VENDOR:HARRIS ID:A4 OPCODE:172 LENGTH:12 MSG:ACA40C000312014871980418 (from 0x014871 to 0x980418 unit-2-unit data channel grant?)
+ *
+ * Both messages seem to refer to a possible channel 0-786 (0x0312) so this may be a unit-2-unit private Phase 1 call
+ * or maybe a private data call. Radio addresses: 0x014871 and 0x980418
  */
-public class MotorolaGroupRegroupChannelGrantImplicit extends MacStructureVendor
-        implements IFrequencyBandReceiver, IP25ChannelGrantDetailProvider, IServiceOptionsProvider
+public class L3HarrisUnitToUnitDataChannelGrant extends MacStructureVendor implements IFrequencyBandReceiver,
+        IP25ChannelGrantDetailProvider
 {
-    private static final IntField SERVICE_OPTIONS = IntField.length8(OCTET_4_BIT_24);
+    //OCTET 4 is 0x00 ?
     private static final IntField FREQUENCY_BAND = IntField.length4(OCTET_5_BIT_32);
     private static final IntField CHANNEL_NUMBER = IntField.length12(OCTET_5_BIT_32 + 4);
-    private static final IntField SUPERGROUP_ADDRESS = IntField.length16(OCTET_7_BIT_48);
-    private static final IntField SOURCE_ADDRESS = IntField.length24(OCTET_9_BIT_64);
-
-    private VoiceServiceOptions mServiceOptions;
-    private List<Identifier> mIdentifiers;
-    private PatchGroupIdentifier mPatchgroup;
-    private RadioIdentifier mSourceAddress;
+    private static final IntField TARGET_ADDRESS = IntField.length24(OCTET_7_BIT_48);
+    private static final IntField SOURCE_ADDRESS = IntField.length24(OCTET_10_BIT_72);
     private APCO25Channel mChannel;
+    private RadioIdentifier mSourceAddress;
+    private RadioIdentifier mTargetAddress;
+    private List<Identifier> mIdentifiers;
 
     /**
      * Constructs the message
@@ -61,7 +68,7 @@ public class MotorolaGroupRegroupChannelGrantImplicit extends MacStructureVendor
      * @param message containing the message bits
      * @param offset into the message for this structure
      */
-    public MotorolaGroupRegroupChannelGrantImplicit(CorrectedBinaryMessage message, int offset)
+    public L3HarrisUnitToUnitDataChannelGrant(CorrectedBinaryMessage message, int offset)
     {
         super(message, offset);
     }
@@ -72,58 +79,28 @@ public class MotorolaGroupRegroupChannelGrantImplicit extends MacStructureVendor
     public String toString()
     {
         StringBuilder sb = new StringBuilder();
-        sb.append(getOpcode());
-        if(getServiceOptions().isEncrypted())
-        {
-            sb.append(" ENCRYPTED");
-        }
-        sb.append(" SUPERGROUP:").append(getTargetAddress());
-        if(hasSourceAddress())
-        {
-            sb.append(" SOURCE:").append(getSourceAddress());
-        }
+        sb.append("L3HARRIS MACO:172 PRIVATE CHANNEL GRANT TO:").append(getTargetAddress());
+        sb.append(" FM:").append(getSourceAddress());
+        sb.append(" CHAN:").append(getChannel());
+        sb.append(" MSG:").append(getMessage().getSubMessage(getOffset(), getOffset() + (getLength() * 8)).toHexString());
         return sb.toString();
     }
-    
+
+    /**
+     * Channel
+     */
     public APCO25Channel getChannel()
     {
         if(mChannel == null)
         {
             mChannel = APCO25Channel.create(getInt(FREQUENCY_BAND), getInt(CHANNEL_NUMBER));
         }
-        
+
         return mChannel;
     }
-    
 
     /**
-     * Service options for the referenced call.
-     */
-    public VoiceServiceOptions getServiceOptions()
-    {
-        if(mServiceOptions == null)
-        {
-            mServiceOptions = new VoiceServiceOptions(getInt(SERVICE_OPTIONS));
-        }
-
-        return mServiceOptions;
-    }
-
-    /**
-     * Patch group for the channel grant
-     */
-    public PatchGroupIdentifier getTargetAddress()
-    {
-        if(mPatchgroup == null)
-        {
-            mPatchgroup = APCO25PatchGroup.create(getInt(SUPERGROUP_ADDRESS));
-        }
-
-        return mPatchgroup;
-    }
-
-    /**
-     * Talker radio identifier.
+     * Source radio for this message
      */
     public RadioIdentifier getSourceAddress()
     {
@@ -135,12 +112,30 @@ public class MotorolaGroupRegroupChannelGrantImplicit extends MacStructureVendor
         return mSourceAddress;
     }
 
+
     /**
-     * Indicates if this message has a non-zero radio talker identifier.
+     * Target radio for this message.
      */
-    public boolean hasSourceAddress()
+    public RadioIdentifier getTargetAddress()
     {
-        return getInt(SOURCE_ADDRESS) > 0;
+        if(mTargetAddress == null)
+        {
+            mTargetAddress = APCO25RadioIdentifier.createTo(getInt(TARGET_ADDRESS));
+        }
+
+        return mTargetAddress;
+    }
+
+    @Override
+    public List<IChannelDescriptor> getChannels()
+    {
+        return Collections.singletonList(getChannel());
+    }
+
+    @Override
+    public ServiceOptions getServiceOptions()
+    {
+        return new DataServiceOptions(0);
     }
 
     @Override
@@ -149,20 +144,10 @@ public class MotorolaGroupRegroupChannelGrantImplicit extends MacStructureVendor
         if(mIdentifiers == null)
         {
             mIdentifiers = new ArrayList<>();
+            mIdentifiers.add(getSourceAddress());
             mIdentifiers.add(getTargetAddress());
-
-            if(hasSourceAddress())
-            {
-                mIdentifiers.add(getSourceAddress());
-            }
         }
 
         return mIdentifiers;
-    }
-
-    @Override
-    public List<IChannelDescriptor> getChannels()
-    {
-        return Collections.singletonList(getChannel());
     }
 }
