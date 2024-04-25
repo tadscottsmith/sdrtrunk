@@ -251,7 +251,7 @@ public class PDUMessageFactory
                 return new AMBTCMessageUpdate(pduSequence, nac, timestamp);
             case OSP_NETWORK_STATUS_BROADCAST:
                 return new AMBTCNetworkStatusBroadcast(pduSequence, nac, timestamp);
-            case OSP_PROTECTION_PARAMETER_BROADCAST:
+            case OSP_ADJACENT_STATUS_BROADCAST_UNCOORDINATED_BAND_PLAN:
                 return new AMBTCProtectionParameterBroadcast(pduSequence, nac, timestamp);
             case OSP_RFSS_STATUS_BROADCAST:
                 return new AMBTCRFSSStatusBroadcast(pduSequence, nac, timestamp);

@@ -20,7 +20,7 @@
 package io.github.dsheirer.module.decode.p25.phase1.message.lc;
 
 import io.github.dsheirer.bits.CorrectedBinaryMessage;
-import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisPrivateCallWaiting;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisReturnToControlChannel;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisUnknownOpcode42;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisUnknownOpcode43;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaEmergencyAlarmActivation;
@@ -152,8 +152,8 @@ public class LinkControlWordFactory
             case UNIT_TO_UNIT_VOICE_CHANNEL_USER_EXTENDED:
                 return new LCUnitToUnitVoiceChannelUserExtended(message);
 
-            case L3HARRIS_UNKNOWN_0A:
-                return new LCHarrisPrivateCallWaiting(message);
+            case L3HARRIS_RETURN_TO_CONTROL_CHANNEL:
+                return new LCHarrisReturnToControlChannel(message);
             case L3HARRIS_UNKNOWN_2A:
                 return new LCHarrisUnknownOpcode42(message);
             case L3HARRIS_UNKNOWN_2B:

@@ -103,7 +103,7 @@ public enum LinkControlOpcode
     MOTOROLA_RADIO_REPROGRAM_RECORD("MOTOROLA RADIO REPROGRAM CONTINUATION", 23),
     MOTOROLA_UNKNOWN("MOTOROLA UNKNOWN", -1),
 
-    L3HARRIS_UNKNOWN_0A("UNKNOWN OPCODE 10", 10),
+    L3HARRIS_RETURN_TO_CONTROL_CHANNEL("UNKNOWN OPCODE 10", 10),
     L3HARRIS_UNKNOWN_2A("UNKNOWN OPCODE 42", 42),
     L3HARRIS_UNKNOWN_2B("UNKNOWN OPCODE 43", 43),
     L3HARRIS_UNKNOWN("L3HARRIS UNKNOWN", -1),
@@ -141,7 +141,7 @@ public enum LinkControlOpcode
     /**
      * L3Harris Opcodes
      */
-    public static final EnumSet<LinkControlOpcode> L3HARRIS_OPCODES = EnumSet.of(L3HARRIS_UNKNOWN_0A,
+    public static final EnumSet<LinkControlOpcode> L3HARRIS_OPCODES = EnumSet.of(L3HARRIS_RETURN_TO_CONTROL_CHANNEL,
             L3HARRIS_UNKNOWN_2A, L3HARRIS_UNKNOWN_2B, L3HARRIS_UNKNOWN);
 
     /**
@@ -208,7 +208,7 @@ public enum LinkControlOpcode
                 switch(value)
                 {
                     case 10:
-                        return L3HARRIS_UNKNOWN_0A;
+                        return L3HARRIS_RETURN_TO_CONTROL_CHANNEL;
                     case 42:
                         return L3HARRIS_UNKNOWN_2A;
                     case 43:

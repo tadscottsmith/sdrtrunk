@@ -29,12 +29,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * L3Harris Unknown Opcode 10 (0x0A) - This seems to be a 'return to control channel' or 'private call waiting'.
+ * L3Harris Opcode 10 (0x0A) - This seems to be a 'return to control channel' or 'private data call paging'.
  * <p>
  * Observed on a phase 1 traffic data channel carried by a TDU during an SNDCP packet data session.  The controller sent
  * an 'All blocks received' PDU to the radio and an 'Activate TDS context' in the middle of a stream of these TDU/LC
  * messages, and then the radio terminated the traffic channel.  So, this may be some form of return to control
- * channel.
+ * channel or maybe a private data call paging where the mobile returns to the control channel to receive the private
+ * data channel grant for another data call
  *
  * When the radio returned to the control channel, control sent the following two MAC messages on the Phase 2 control:
  * LOCCH-U NAC:9/x009 SIGNAL CUSTOM/UNKNOWN VENDOR:HARRIS ID:A4 OPCODE:160 LENGTH:9 MSG:A0A409AC0312014871     (radio 0x014871 go to data channel 0x0312??)
@@ -43,8 +44,11 @@ import java.util.List;
  * Both messages seem to refer to channel 0-786 (0x0312) so this may be a unit-2-unit private Phase 1 call or maybe
  * a private data call. Radio addresses: 0x014871 and 0x980418
  *
+ * In a second observation (Rockwall, TX), the control channel used the SNDCP data channel grant to send the
+ * mobile to the data channel and then the data channel transmitted a sequence of TDULCs containing only this message.
+ *
  */
-public class LCHarrisPrivateCallWaiting extends LinkControlWord
+public class LCHarrisReturnToControlChannel extends LinkControlWord
 {
     private static final IntField UNKNOWN_1 = IntField.length8(OCTET_2_BIT_16);
     private static final IntField SOURCE_RADIO = IntField.length24(OCTET_3_BIT_24);
@@ -58,7 +62,7 @@ public class LCHarrisPrivateCallWaiting extends LinkControlWord
      *
      * @param message
      */
-    public LCHarrisPrivateCallWaiting(CorrectedBinaryMessage message)
+    public LCHarrisReturnToControlChannel(CorrectedBinaryMessage message)
     {
         super(message);
     }
@@ -78,7 +82,7 @@ public class LCHarrisPrivateCallWaiting extends LinkControlWord
         }
         else
         {
-            sb.append("L3HARRIS OPCODE 10 RETURN TO CONTROL CHANNEL FOR PRIVATE CALL");
+            sb.append("L3HARRIS RETURN TO CONTROL CHANNEL OR PRIVATE DATA CALL PAGING");
             sb.append(" FM:").append(getSourceRadio());
             sb.append(" TO:").append(getTargetRadio());
             sb.append(" UNK:").append(getUnknown());

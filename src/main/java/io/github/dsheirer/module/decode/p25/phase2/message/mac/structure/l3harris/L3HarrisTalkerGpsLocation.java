@@ -101,6 +101,7 @@ public class L3HarrisTalkerGpsLocation extends MacStructureVendor
 
         sb.append(GPS_FORMAT.format(getLatitude())).append(" ").append(GPS_FORMAT.format(getLongitude()));
         sb.append(" TIME:").append(SDF.format(getTimestampMs()));
+        sb.append(" MSG:").append(getMessage().toHexString());
         return sb.toString();
     }
 

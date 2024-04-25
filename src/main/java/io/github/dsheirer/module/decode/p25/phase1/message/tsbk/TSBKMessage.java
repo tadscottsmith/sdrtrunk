@@ -55,14 +55,6 @@ public abstract class TSBKMessage extends P25P1Message
     {
         super(message, nac, timestamp);
         mDataUnitID = dataUnitID;
-
-        //The CRC-CCITT can correct up to 1 bit error or detect 2 or more errors.  We mark the message as
-        //invalid if the algorithm detects more than 1 correctable error.
-        int errors = CRCP25.correctCCITT80(message, 0, 80);
-        if(errors > 1)
-        {
-            setValid(false);
-        }
     }
 
     @Override

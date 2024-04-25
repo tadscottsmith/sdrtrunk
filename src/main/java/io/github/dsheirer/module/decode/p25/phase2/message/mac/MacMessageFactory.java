@@ -566,6 +566,8 @@ public class MacMessageFactory
             case L3HARRIS_A0_PRIVATE_DATA_CHANNEL_GRANT:
                 return new L3HarrisPrivateDataChannelGrant(message, offset);
             case L3HARRIS_AA_GPS_LOCATION:
+                L3HarrisTalkerGpsLocation gps = new L3HarrisTalkerGpsLocation(message, offset);
+                mLog.info(gps.toString());
                 return new L3HarrisTalkerGpsLocation(message, offset);
             case L3HARRIS_A8_TALKER_ALIAS:
                 return new L3HarrisTalkerAlias(message, offset);

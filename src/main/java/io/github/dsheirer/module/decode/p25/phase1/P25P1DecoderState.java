@@ -61,7 +61,7 @@ import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HDUMessage;
 import io.github.dsheirer.module.decode.p25.phase1.message.hdu.HeaderData;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlOpcode;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.LinkControlWord;
-import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisPrivateCallWaiting;
+import io.github.dsheirer.module.decode.p25.phase1.message.lc.l3harris.LCHarrisReturnToControlChannel;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaEmergencyAlarmActivation;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaGroupRegroupVoiceChannelUpdate;
 import io.github.dsheirer.module.decode.p25.phase1.message.lc.motorola.LCMotorolaTalkComplete;
@@ -619,7 +619,7 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                                 mu.getShortDataMessage());
                     }
                     break;
-                case OSP_PROTECTION_PARAMETER_BROADCAST:
+                case OSP_ADJACENT_STATUS_BROADCAST_UNCOORDINATED_BAND_PLAN:
                     if(ambtc instanceof AMBTCProtectionParameterBroadcast ppb)
                     {
                         broadcastEvent(ambtc, DecodeEventType.RESPONSE, "USE ENCRYPTION " + ppb.getEncryptionKey() +
@@ -1149,8 +1149,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 case OSP_SECONDARY_CONTROL_CHANNEL_BROADCAST:
                 case OSP_ADJACENT_STATUS_BROADCAST:
                 case OSP_IDENTIFIER_UPDATE:
-                case OSP_PROTECTION_PARAMETER_BROADCAST:
-                case OSP_PROTECTION_PARAMETER_UPDATE:
+                case OSP_ADJACENT_STATUS_BROADCAST_UNCOORDINATED_BAND_PLAN:
+                case OSP_RESERVED_3F:
                     mNetworkConfigurationMonitor.process(tsbk);
 
                     //Send the frequency bands to the traffic channel manager to use for traffic channel preload data
@@ -2089,8 +2089,8 @@ public class P25P1DecoderState extends DecoderState implements IChannelEventList
                 }
                 broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.PAGE, "Unit-to-Unit Answer Request");
                 break;
-            case L3HARRIS_UNKNOWN_0A:
-                if(lcw instanceof LCHarrisPrivateCallWaiting)
+            case L3HARRIS_RETURN_TO_CONTROL_CHANNEL:
+                if(lcw instanceof LCHarrisReturnToControlChannel)
                 {
                     broadcastEvent(lcw.getIdentifiers(), timestamp, DecodeEventType.RESPONSE, "L3Harris Opcode 10 - Unknown");
                 }

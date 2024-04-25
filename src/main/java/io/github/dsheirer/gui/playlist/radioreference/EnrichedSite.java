@@ -25,13 +25,14 @@ import io.github.dsheirer.rrapi.type.Site;
 /**
  * Wrapper class to join a Site and a corresponding County Info
  */
-public class EnrichedSite
+public class EnrichedSite implements Comparable<EnrichedSite>
 {
     private Site mSite;
     private CountyInfo mCountyInfo;
 
     /**
      * Constructs an instance
+     *
      * @param site object
      * @param countyInfo optional
      */
@@ -41,8 +42,16 @@ public class EnrichedSite
         mCountyInfo = countyInfo;
     }
 
+    public static String format(int value)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append(value).append(" (").append(Integer.toHexString(value).toUpperCase()).append(")");
+        return sb.toString();
+    }
+
     /**
      * Site instance
+     *
      * @return site or null
      */
     public Site getSite()
@@ -52,6 +61,7 @@ public class EnrichedSite
 
     /**
      * Sets the site instance
+     *
      * @param site or null
      */
     public void setSite(Site site)
@@ -61,6 +71,7 @@ public class EnrichedSite
 
     /**
      * County information
+     *
      * @return county info or null
      */
     public CountyInfo getCountyInfo()
@@ -70,6 +81,7 @@ public class EnrichedSite
 
     /**
      * Sets the county info
+     *
      * @param countyInfo or null
      */
     public void setCountyInfo(CountyInfo countyInfo)
@@ -78,13 +90,26 @@ public class EnrichedSite
     }
 
     /**
-     * Optional site number
+     * Formatted system identity
+     *
+     * @return
      */
-    public Integer getSiteNumber()
+    public String getSystemFormatted()
     {
         if(mSite != null)
         {
-            return mSite.getSiteNumber();
+            //System number is stored in the zone number field.
+            return format(mSite.getZoneNumber());
+        }
+
+        return null;
+    }
+
+    public String getSiteFormatted()
+    {
+        if(mSite != null)
+        {
+            return format(mSite.getSiteNumber());
         }
 
         return null;
@@ -93,11 +118,11 @@ public class EnrichedSite
     /**
      * Optional site RFSS value
      */
-    public Integer getRfss()
+    public String getRfssFormatted()
     {
         if(mSite != null)
         {
-            return mSite.getRfss();
+            return format(mSite.getRfss());
         }
 
         return null;
@@ -123,9 +148,28 @@ public class EnrichedSite
     {
         if(mSite != null)
         {
-            return mSite.getDescription();
+            return mSite.getDescription() + " (" + mSite.getModulation() + ")";
         }
 
         return null;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        String system = getSystemFormatted();
+        sb.append(system == null ? "-" : system).append(" ");
+        String rfss = getRfssFormatted();
+        sb.append(rfss == null ? "-" : rfss).append(" ");
+        String site = getSiteFormatted();
+        sb.append(site == null ? "-" : site);
+        return sb.toString();
+    }
+
+    @Override
+    public int compareTo(EnrichedSite o)
+    {
+        return this.toString().compareTo(o.toString());
     }
 }
