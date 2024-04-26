@@ -1,6 +1,6 @@
 /*
  * *****************************************************************************
- *  Copyright (C) 2014-2020 Dennis Sheirer
+ * Copyright (C) 2014-2024 Dennis Sheirer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ import io.github.dsheirer.rrapi.type.Site;
  */
 public class EnrichedSite implements Comparable<EnrichedSite>
 {
+    private static final String PHASE_2_TDMA_MODULATION = "TDMA";
     private Site mSite;
     private CountyInfo mCountyInfo;
 
@@ -148,7 +149,7 @@ public class EnrichedSite implements Comparable<EnrichedSite>
     {
         if(mSite != null)
         {
-            return mSite.getDescription() + " (" + mSite.getModulation() + ")";
+            return mSite.getDescription();
         }
 
         return null;
