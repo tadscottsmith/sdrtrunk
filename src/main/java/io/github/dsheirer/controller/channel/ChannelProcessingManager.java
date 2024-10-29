@@ -283,22 +283,7 @@ public class ChannelProcessingManager implements Listener<ChannelEvent>
                 {
                     try
                     {
-                        if(channel.isProcessing())
-                        {
-                            stopProcessing(channel);
-                        }
-                        else
-                        {
-                            try
-                            {
-                                throw new IllegalArgumentException("Request to disable channel that is already flagged as not processing");
-                            }
-                            catch(IllegalArgumentException iae)
-                            {
-                                mLog.error("Caught a [" + event.getEvent() + "] non-standard channel event - logging stack trace.  " +
-                                        "This should not happen, please send this error to the developer.", iae);
-                            }
-                        }
+                        stopProcessing(channel);
                     }
                     catch(Throwable t)
                     {
@@ -548,7 +533,14 @@ public class ChannelProcessingManager implements Listener<ChannelEvent>
 
         if(addProcessingChain(channel, processingChain))
         {
-            processingChain.start();
+            try
+            {
+                processingChain.start();
+            }
+            catch(Throwable t)
+            {
+                mLog.error("Error caught during processing chain startup - continuing", t);
+            }
 
             if(GraphicsEnvironment.isHeadless())
             {

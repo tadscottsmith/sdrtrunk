@@ -206,7 +206,15 @@ public class MultiChannelState extends AbstractChannelState implements IDecoderS
         {
             if(getChannel().isTrafficChannel())
             {
-                broadcast(new ChannelEvent(getChannel(), ChannelEvent.Event.REQUEST_DISABLE));
+                try
+                {
+                    broadcast(new ChannelEvent(getChannel(), ChannelEvent.Event.REQUEST_DISABLE));
+                }
+                catch(Throwable t)
+                {
+                    mLog.error("Error broadcasting shutdown channel event", t);
+                }
+
                 mTeardownSequenceStarted = true;
             }
             else
