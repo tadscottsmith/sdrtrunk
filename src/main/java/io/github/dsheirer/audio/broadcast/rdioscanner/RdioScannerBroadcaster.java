@@ -117,6 +117,8 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
             setBroadcastState(BroadcastState.ERROR);
         }
 
+        setBroadcastState(BroadcastState.CONNECTED);
+
         if(mAudioRecordingProcessorFuture == null)
         {
             mAudioRecordingProcessorFuture = ThreadPool.SCHEDULED.scheduleAtFixedRate(new AudioRecordingProcessor(),
@@ -292,7 +294,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                     }
                                     else
                                     {
-                                        setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
+                                        //setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
                                         mLog.error("Rdio Scanner API file upload fail [" +
                                             fileResponse.statusCode() + "] response [" +
                                             fileResponse.body() + "]");
@@ -313,6 +315,13 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                             BroadcastEvent.Event.BROADCASTER_STREAMED_COUNT_CHANGE)); 
                                         audioRecording.removePendingReplay(); 
                                     }
+                                    else if(fileResponseString.contains("Tone detection failed"))
+                                    {
+                                        incrementStreamedAudioCount();
+                                        broadcast(new BroadcastEvent(RdioScannerBroadcaster.this,
+                                            BroadcastEvent.Event.BROADCASTER_STREAMED_COUNT_CHANGE)); 
+                                        audioRecording.removePendingReplay(); 
+                                    }
                                     else if(fileResponseString.contains("duplicate call rejected"))
                                     {
                                         //Rdio Scanner is telling us to skip audio upload - someone already uploaded it
@@ -320,7 +329,7 @@ public class RdioScannerBroadcaster extends AbstractAudioBroadcaster<RdioScanner
                                     }
                                     else
                                     {
-                                        setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
+                                        //setBroadcastState(BroadcastState.TEMPORARY_BROADCAST_ERROR);
                                         mLog.error("Rdio Scanner API file upload fail [" +
                                             fileResponse.statusCode() + "] response [" +
                                             fileResponse.body() + "]");
