@@ -32,6 +32,7 @@ import javafx.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URL;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -187,7 +188,15 @@ public class Icon implements Comparable<Icon>
             {
                 if(getPath().startsWith("images"))
                 {
-                    mFxImage = new Image(getPath(), 0, ICON_HEIGHT_JAVAFX, true, true);
+                    URL resource = Icon.class.getResource("/" + getPath());
+
+                    if(resource == null)
+                    {
+                        mLog.error("Error loading icon [" + getName() + "] - resource not found: " + getPath());
+                        return null;
+                    }
+
+                    mFxImage = new Image(resource.toExternalForm(), 0, ICON_HEIGHT_JAVAFX, true, true);
                 }
                 else
                 {
